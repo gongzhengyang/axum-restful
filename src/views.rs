@@ -1,14 +1,19 @@
 use std::fmt::Debug;
 
-use axum::{
-    http::StatusCode,
-    response::Response
+use sea_orm::{
+    ModelTrait,
+    ActiveModelTrait
 };
+
+use axum::{http::StatusCode, Json, response::Response};
 use async_trait::async_trait;
 
 #[async_trait]
 pub trait ModelView {
-    async fn post() -> Result<StatusCode, Response> {
+    type ActiveModel: ActiveModelTrait;
+    type Model: ModelTrait;
+
+    async fn post(Json(data): Json<serde_json::Value>) -> Result<StatusCode, Response> {
         Ok(StatusCode::CREATED)
     }
 
@@ -28,7 +33,9 @@ pub trait ModelView {
 #[async_trait]
 impl<T> ModelView for T
 where
-    T: Debug
+    T: Debug,
+    T::ActiveModel: ActiveModelTrait,
+    T::Model: ModelTrait
 {
 
 }
