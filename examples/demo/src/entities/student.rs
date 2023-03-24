@@ -9,6 +9,7 @@ use std::fmt::Write;
 #[sea_orm(table_name = "student")]
 pub struct Model {
     #[sea_orm(primary_key)]
+    #[serde(skip_deserializing)]
     pub id: i64,
     pub name: String,
     pub region: String,
@@ -19,16 +20,3 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
-
-// #[derive(Copy, Clone, Debug, EnumIter)]
-// pub enum PrimaryKey {
-//     Id,
-// }
-//
-// impl PrimaryKeyTrait for PrimaryKey {
-//     type ValueType = i64;
-//
-//     fn auto_increment() -> bool {
-//         true
-//     }
-// }

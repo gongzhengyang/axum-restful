@@ -13,6 +13,11 @@ sea-orm = { version = "0.11", features = ["macros", "sqlx-postgres", "runtime-to
 log = "0.4"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+tracing = "= 0.1.37"
+tracing-subscriber = "= 0.3.16"
+anyhow = "= 1.0.60"
+tokio-rustls = "= 0.23.4"
+axum-server = { version = "= 0.4.4", features = ["tls-rustls"] }
 
 [[example]]
 name = "demo"
