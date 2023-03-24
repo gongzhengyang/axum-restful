@@ -9,16 +9,7 @@ use sea_orm::*;
 
 #[tokio::main]
 async fn main() {
-    let s = student::ActiveModel::from_json(serde_json::json!({
-        "name": "a",
-        "region": "china",
-        "age": "test"
-    }))
-    .unwrap();
     let db = get_db_connection_pool().await;
-    let result = s.insert(db).await;
-    println!("insert {result:?}---");
-    //
     let students: Vec<student::Model> = student::Entity::find()
         .order_by_asc(student::Column::Name)
         .all(db)
