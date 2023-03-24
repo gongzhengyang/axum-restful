@@ -1,18 +1,18 @@
 use std::{net::SocketAddr, path::PathBuf};
 
 use axum::{
-    BoxError,
     extract::Host,
     handler::HandlerWithoutStateExt,
     http::{StatusCode, Uri},
-    response::Redirect, Router,
+    response::Redirect,
+    BoxError, Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
 
 #[derive(Clone, Copy)]
-struct Ports {
-    http: u16,
-    https: u16,
+pub struct Ports {
+    pub http: u16,
+    pub https: u16,
 }
 
 pub async fn tls_server(addr: SocketAddr, app: Router) {
@@ -24,8 +24,8 @@ pub async fn tls_server(addr: SocketAddr, app: Router) {
             .join("self_signed_certs")
             .join("key.pem"),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
     axum_server::bind_rustls(addr, config)
         .serve(app.into_make_service())
         .await

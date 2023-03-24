@@ -4,9 +4,9 @@ use async_trait::async_trait;
 use axum::{
     extract::Path,
     http::StatusCode,
-    Json,
     response::{IntoResponse, Response},
-    Router, routing::get,
+    routing::get,
+    Json, Router,
 };
 use sea_orm::{
     ActiveModelBehavior, ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel,
@@ -15,7 +15,7 @@ use sea_orm::{
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::{AppError, db};
+use crate::{db, AppError};
 
 #[async_trait]
 pub trait ModelView<T>
@@ -37,7 +37,10 @@ where
         Ok(StatusCode::OK)
     }
 
-    async fn http_partial_update(Path(pk): Path<u64>, Json(data): Json<Value>) -> Result<StatusCode, AppError> {
+    async fn http_partial_update(
+        Path(pk): Path<u64>,
+        Json(data): Json<Value>,
+    ) -> Result<StatusCode, AppError> {
         let model = <T::Entity as EntityTrait>::find_by_id(Self::exchange_primary_key(pk))
             .one(Self::get_db_connection().await)
             .await?;
@@ -54,7 +57,6 @@ where
         let result = active_model.update(Self::get_db_connection().await).await;
         tracing::debug!("patch with result: {result:?}");
         Ok(StatusCode::OK)
-
     }
 
     async fn http_list() -> Result<Json<Value>, AppError> {

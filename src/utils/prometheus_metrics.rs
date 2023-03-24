@@ -15,6 +15,7 @@ use axum::{
 
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 
+/// based on axum/examples/prometheus-metrics/src/main.rs
 fn setup_metrics_recorder() -> PrometheusHandle {
     const EXPONENTIAL_SECONDS: &[f64] = &[
         0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
@@ -58,7 +59,7 @@ async fn track_metrics<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
 
 pub async fn start_metrics_server() {
     let recorder_handle = setup_metrics_recorder();
-    let app = Router::new().route("/metrics", get(move || ready(recorder_handle.render())))
+    let app = Router::new().route("/metrics", get(move || ready(recorder_handle.render())));
 
     // NOTE: expose metrics enpoint on a different port
     let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
