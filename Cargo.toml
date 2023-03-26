@@ -31,7 +31,13 @@ tower-service = "0.3.2"
 reqwest = { version = "0.11.14", default-features = false, features = ["json", "stream", "multipart"] }
 metrics-exporter-prometheus = "0.11"
 metrics = "0.20"
+rcgen = "0.10.0"
+pem = "1.0"
 
 [[example]]
 name = "demo"
 path = "examples/demo/src/main.rs"
+
+[[example]]
+name = "full"
+path = "examples/full/src/main.rs"
