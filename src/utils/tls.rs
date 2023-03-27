@@ -6,106 +6,118 @@ use axum::{
     handler::HandlerWithoutStateExt,
     http::{StatusCode, Uri},
     response::Redirect,
-    BoxError, Router,
+    BoxError,
 };
 use axum_server::tls_rustls::RustlsConfig;
 use rcgen::{date_time_ymd, Certificate, CertificateParams, DistinguishedName, DnType, SanType};
 
 use crate::AppError;
 
-#[derive(Clone, Copy)]
-pub struct Ports {
-    pub http: u16,
-    pub https: u16,
-}
-
+/// enable https
+/// you can config the cert, private key filepath
+/// config generate if target filepath is not exists
+/// ```rust,no_run
+/// use std::net::SocketAddr;
+/// use axum::{Router, routing::get};
+/// use axum_restful::utils::{GenerateCertKey, redirect_http_to_https};
+///
+/// struct GenerateAppCertKey;
+/// impl GenerateCertKey for GenerateAppCertKey {}
+///
+/// // config http,https ports
+/// let http_port = 3000;
+/// let https_port = 3001;
+/// let ip = "0.0.0.0";
+///
+/// // spawn a http service to redirect request to https service
+/// // tokio::spawn(async move {
+/// //    redirect_http_to_https(http_port, https_port, ip).await;
+/// // });
+///
+/// let app = Router::new().route("/hello", get(|| async { "Hello, world!" }));
+/// // async {
+/// //     let tls_config = GenerateAppCertKey::get_rustls_config(true).await.unwrap();
+/// //     let addr: SocketAddr = format!("{}:{}", ip, https_port).as_str().parse().unwrap();
+/// //    axum_server::bind_rustls(addr, tls_config)
+/// //       .serve(app.into_make_service())
+/// //       .await
+/// //       .unwrap();
+/// // };
+/// ```
 #[async_trait]
 pub trait GenerateCertKey {
-    fn get_cert_key_path() -> (String, String) {
-        ("cert/cert.pem".to_owned(), "cert/key.pem".to_owned())
+    fn get_cert_key_path() -> Result<(String, String), AppError> {
+        fs::create_dir_all("certs/")?;
+        Ok(("certs/cert.pem".to_owned(), "certs/key.pem".to_owned()))
     }
 
-    async fn get_rustls_config(create_if_not_esists: bool) -> RustlsConfig {
-        let (cert, key) = Self::get_cert_key_path();
+    async fn get_rustls_config(create_if_not_exists: bool) -> Result<RustlsConfig, AppError> {
+        let (cert, key) = Self::get_cert_key_path()?;
         let cert_pathbuf = PathBuf::from(cert);
         let key_pathbuf = PathBuf::from(key);
-        if create_if_not_esists && (!cert_pathbuf.exists() | !key_pathbuf.exists()) {
+        if create_if_not_exists && (!cert_pathbuf.exists() | !key_pathbuf.exists()) {
             tracing::info!(
                 "generate cert at {} and key at {}",
                 cert_pathbuf.to_str().unwrap(),
                 key_pathbuf.to_str().unwrap()
             );
-            Self::generate_cert_key();
+            Self::generate_cert_key()?;
         }
-        RustlsConfig::from_pem_file(cert_pathbuf, key_pathbuf)
+        Ok(RustlsConfig::from_pem_file(cert_pathbuf, key_pathbuf)
             .await
-            .unwrap()
+            .unwrap())
     }
 
     fn generate_cert_key() -> Result<(), AppError> {
         let cert = Certificate::from_params(Self::get_cert_params())?;
-
         let pem_serialized = cert.serialize_pem()?;
-        let der_serialized = pem::parse(&pem_serialized).unwrap().contents;
         println!("{}", pem_serialized);
         println!("{}", cert.serialize_private_key_pem());
-        std::fs::create_dir_all("certs/")?;
-        fs::write("certs/cert.pem", &pem_serialized.as_bytes())?;
-        fs::write("certs/cert.der", &der_serialized)?;
-        fs::write(
-            "certs/key.pem",
-            &cert.serialize_private_key_pem().as_bytes(),
-        )?;
-        fs::write("certs/key.der", &cert.serialize_private_key_der())?;
-
+        let (cert_path, key_path) = Self::get_cert_key_path()?;
+        fs::write(cert_path, pem_serialized.as_bytes())?;
+        fs::write(key_path, cert.serialize_private_key_pem().as_bytes())?;
         Ok(())
     }
 
     fn get_cert_params() -> CertificateParams {
         let mut params: CertificateParams = Default::default();
-        params.not_before = date_time_ymd(1975, 01, 01);
-        params.not_after = date_time_ymd(4096, 01, 01);
+        params.not_before = date_time_ymd(1975, 1, 1);
+        params.not_after = date_time_ymd(4096, 1, 1);
         params.distinguished_name = DistinguishedName::new();
         params
             .distinguished_name
-            .push(DnType::OrganizationName, "Crab widgits SE");
+            .push(DnType::OrganizationName, "Axum-restful");
         params
             .distinguished_name
-            .push(DnType::CommonName, "Master Cert");
-        params.subject_alt_names = vec![
-            SanType::DnsName("crabs.crabs".to_string()),
-            SanType::DnsName("localhost".to_string()),
-        ];
+            .push(DnType::CommonName, "Axum-restful common name");
+        params.subject_alt_names = vec![SanType::DnsName("localhost".to_string())];
         params
     }
 }
 
-// pub async fn tls_server(addr: SocketAddr, app: Router, generate_app_cert_key: Box<dyn GenerateCertKey>) {
-//     let config = <generate_app_cert_key as GenerateCertKey>::get_rustls_config(true);
-//     axum_server::bind_rustls(addr, config)
-//         .serve(app.into_make_service())
-//         .await
-//         .unwrap();
-// }
+pub async fn redirect_http_to_https(http_port: u16, https_port: u16, http_ip: &str) {
+    fn make_https(
+        host: String,
+        uri: Uri,
+        http_port: u16,
+        https_port: u16,
+    ) -> Result<Uri, BoxError> {
+        let mut parts = uri.into_parts();
 
-fn make_https(host: String, uri: Uri, ports: Ports) -> Result<Uri, BoxError> {
-    let mut parts = uri.into_parts();
+        parts.scheme = Some(axum::http::uri::Scheme::HTTPS);
 
-    parts.scheme = Some(axum::http::uri::Scheme::HTTPS);
+        if parts.path_and_query.is_none() {
+            parts.path_and_query = Some("/".parse().unwrap());
+        }
 
-    if parts.path_and_query.is_none() {
-        parts.path_and_query = Some("/".parse().unwrap());
+        let https_host = host.replace(&http_port.to_string(), &https_port.to_string());
+        parts.authority = Some(https_host.parse()?);
+
+        Ok(Uri::from_parts(parts)?)
     }
 
-    let https_host = host.replace(&ports.http.to_string(), &ports.https.to_string());
-    parts.authority = Some(https_host.parse()?);
-
-    Ok(Uri::from_parts(parts)?)
-}
-
-pub async fn redirect_http_to_https(ports: Ports) {
     let redirect = move |Host(host): Host, uri: Uri| async move {
-        match make_https(host, uri, ports) {
+        match make_https(host, uri, http_port, https_port) {
             Ok(uri) => Ok(Redirect::permanent(&uri.to_string())),
             Err(error) => {
                 tracing::warn!(%error, "failed to convert URI to HTTPS");
@@ -114,7 +126,10 @@ pub async fn redirect_http_to_https(ports: Ports) {
         }
     };
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], ports.http));
+    let addr: SocketAddr = format!("{}:{}", http_ip, http_port)
+        .as_str()
+        .parse()
+        .unwrap();
     tracing::debug!("http redirect listening on {}", addr);
 
     axum::Server::bind(&addr)

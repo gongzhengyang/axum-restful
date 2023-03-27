@@ -19,14 +19,15 @@ use crate::{db, AppError};
 
 #[async_trait]
 pub trait ModelView<T>
-where
-    T: ActiveModelTrait + ActiveModelBehavior + Send + 'static,
-    <T::Entity as EntityTrait>::Model: IntoActiveModel<T> + Serialize,
-    for<'de> <T::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
+    where
+        T: ActiveModelTrait + ActiveModelBehavior + Send + 'static,
+        <T::Entity as EntityTrait>::Model: IntoActiveModel<T> + Serialize,
+        for<'de> <T::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
 {
     async fn http_create(Json(data): Json<Value>) -> Result<StatusCode, AppError> {
         let active_model = T::from_json(data)?;
         let result = active_model.insert(Self::get_db_connection().await).await?;
+        tracing::debug!("create model {result:?}");
         Ok(StatusCode::CREATED)
     }
 
@@ -89,8 +90,8 @@ where
     }
 
     fn get_http_routes() -> Router
-    where
-        Self: Send + 'static,
+        where
+            Self: Send + 'static,
     {
         Router::new()
             .route(
@@ -100,5 +101,32 @@ where
                     .put(Self::http_update),
             )
             .route("/", get(Self::http_list).post(Self::http_create))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sea_orm::tests_cfg::*;
+    use sea_orm::{DbBackend, MockDatabase};
+    use sea_orm::ActiveValue::Set;
+
+    async fn get_db() -> DatabaseConnection {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .into_connection();
+        for i in 0..10 {
+            let cake_active_model = cake::ActiveModel {
+                id: Set(i),
+                name: Set(format!("cake-{i}"))
+            };
+            cake_active_model.save(&db);
+        }
+        db
+    }
+
+    #[tokio::test]
+    async fn http_create() {
+        let results: Vec<cake::Model> = cake::Entity::find().all(&db).await.unwrap();
+        println!("{:?}",results);
     }
 }
