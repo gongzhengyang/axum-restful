@@ -1,28 +1,32 @@
-use std::fmt::Debug;
 use std::str::FromStr;
 
 use async_trait::async_trait;
+use axum::extract::Query;
 use axum::{
     extract::Path,
     http::StatusCode,
-    Json,
     response::{IntoResponse, Response},
-    Router, routing::get,
+    routing::get,
+    Json, Router,
 };
-use axum::extract::Query;
-use sea_orm::{ActiveModelBehavior, ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel, ModelTrait, PaginatorTrait, PrimaryKeyTrait, TryFromU64};
+use sea_orm::{
+    ActiveModelBehavior, ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel,
+    ModelTrait, PaginatorTrait, PrimaryKeyTrait, TryFromU64,
+};
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::{AppError, db};
+use crate::{db, AppError};
 
 #[async_trait]
 pub trait ModelView<T>
-    where
-        T: ActiveModelTrait + ActiveModelBehavior + Send + 'static,
-        <T::Entity as EntityTrait>::Model: IntoActiveModel<T> + Serialize,
-        for<'de> <T::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
+where
+    T: ActiveModelTrait + ActiveModelBehavior + Send + 'static + Sync,
+    <T::Entity as EntityTrait>::Model: IntoActiveModel<T> + Serialize + Sync,
+    for<'de> <T::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
 {
+    /// get default db connection with default config
+    /// you can change this when impl ModelView
     async fn get_db_connection() -> &'static DatabaseConnection {
         db::get_db_connection_pool().await
     }
@@ -41,6 +45,7 @@ pub trait ModelView<T>
     /// return http 200 StatusCode::OK
     async fn http_update(Json(data): Json<Value>) -> Result<StatusCode, AppError> {
         let active_model = T::from_json(data)?;
+        tracing::debug!("update active model {active_model:?}");
         let result = active_model.update(Self::get_db_connection().await).await?;
         tracing::debug!("update {result:?}");
         Ok(StatusCode::OK)
@@ -74,19 +79,31 @@ pub trait ModelView<T>
     /// you can set page_size and page_num to page results with url like /api?page_size=10 or /api?page_size=10&page_num=1
     /// return results with StatusCode::OK
     async fn http_list(Query(query): Query<Value>) -> Result<Json<Value>, AppError> {
-        let query = query.as_object().unwrap();
-        let selector = <T::Entity as EntityTrait>::find();
         let db = Self::get_db_connection().await;
-        let page_size = query.get("page_size");
-        let results = if page_size.is_some() {
-            let paginator = selector.paginate(db, page_size.unwrap().into());
-            paginator.fetch_page(query.get("page_num").unwrap_or(&serde_json::json!(1)).into()).await?
+        let page_size = Self::get_page_size(&query);
+        let results = if !page_size.eq(&0) {
+            let paginator = T::Entity::find().into_model().paginate(db, page_size);
+            let page_num = match query.get("page_num") {
+                Some(page_num) if page_num.is_u64() => page_num.as_u64().unwrap(),
+                _ => 1,
+            };
+            paginator.fetch_page(page_num).await?
         } else {
             <T::Entity as EntityTrait>::find()
                 .all(Self::get_db_connection().await)
                 .await?
         };
         Ok(Json(serde_json::json!(results)))
+    }
+
+    fn get_page_size(query: &Value) -> u64 {
+        let page_size = query.get("page_size");
+        if let Some(page_size) = page_size {
+            if let Some(page_size) = page_size.as_u64() {
+                return page_size;
+            }
+        }
+        0
     }
 
     /// GET a single query result with /api/:id
@@ -107,15 +124,12 @@ pub trait ModelView<T>
     async fn http_delete(Path(id): Path<u64>) -> Response {
         let pk = Self::exchange_primary_key(id);
         let db = Self::get_db_connection().await;
-        let model = <T::Entity as EntityTrait>::find_by_id(pk)
-            .one(db)
-            .await;
+        let model = <T::Entity as EntityTrait>::find_by_id(pk).one(db).await;
         if let Ok(Some(value)) = model {
             let delete = value.delete(db).await;
             if delete.is_ok() {
                 StatusCode::NO_CONTENT.into_response()
-            }
-            else {
+            } else {
                 (StatusCode::INTERNAL_SERVER_ERROR, format!("{:?}", delete)).into_response()
             }
         } else {
@@ -133,8 +147,8 @@ pub trait ModelView<T>
 
     /// get http routers with full operates
     fn get_http_routes() -> Router
-        where
-            Self: Send + 'static,
+    where
+        Self: Send + 'static,
     {
         Router::new()
             .route(

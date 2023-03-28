@@ -1,8 +1,8 @@
 use std::net::SocketAddr;
 
-use axum::{Router, routing::get};
+use axum::{routing::get, Router};
 
-use axum_restful::utils::{GenerateCertKey, redirect_http_to_https};
+use axum_restful::utils::{redirect_http_to_https, GenerateCertKey};
 
 #[tokio::main]
 async fn main() {
