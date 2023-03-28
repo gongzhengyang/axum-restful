@@ -34,7 +34,7 @@ use crate::AppError;
 /// //    redirect_http_to_https(http_port, https_port, ip).await;
 /// // });
 ///
-/// let app = Router::new().route("/hello", get(|| async { "Hello, world!" }));
+/// let app: Router = Router::new().route("/hello", get(|| async { "Hello, world!" }));
 /// // async {
 /// //     let tls_config = GenerateAppCertKey::get_rustls_config(true).await.unwrap();
 /// //     let addr: SocketAddr = format!("{}:{}", ip, https_port).as_str().parse().unwrap();
