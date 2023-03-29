@@ -30,19 +30,19 @@ use crate::AppError;
 /// let ip = "0.0.0.0";
 ///
 /// // spawn a http service to redirect request to https service
-/// // tokio::spawn(async move {
-/// //    redirect_http_to_https(http_port, https_port, ip).await;
-/// // });
+/// # tokio::spawn(async move {
+/// redirect_http_to_https(http_port, https_port, ip).await;
+/// # });
 ///
 /// let app: Router = Router::new().route("/hello", get(|| async { "Hello, world!" }));
-/// // async {
-/// //     let tls_config = GenerateAppCertKey::get_rustls_config(true).await.unwrap();
-/// //     let addr: SocketAddr = format!("{}:{}", ip, https_port).as_str().parse().unwrap();
-/// //    axum_server::bind_rustls(addr, tls_config)
-/// //       .serve(app.into_make_service())
-/// //       .await
-/// //       .unwrap();
-/// // };
+/// # async {
+/// let tls_config = GenerateAppCertKey::get_rustls_config(true).await.unwrap();
+/// let addr: SocketAddr = format!("{}:{}", ip, https_port).as_str().parse().unwrap();
+/// axum_server::bind_rustls(addr, tls_config)
+///      .serve(app.into_make_service())
+///      .await
+///      .unwrap();
+/// # };
 /// ```
 #[async_trait]
 pub trait GenerateCertKey {

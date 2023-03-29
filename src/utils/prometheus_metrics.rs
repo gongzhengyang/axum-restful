@@ -19,9 +19,14 @@ use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 ///
 /// let app = Router::new().route("/hello", get(|| async {"hello"})).route_layer(middleware::from_fn(track_metrics));
 /// # async {
-/// #     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap()).serve(app.into_make_service()).await.unwrap()
+/// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap()).serve(app.into_make_service()).await.unwrap()
 /// # };
 /// ```
+/// and then you can visit http://127.0.0.1:3000/hello to get response from axum server,
+/// next the visis metrics is recorded in prometheus metrics,
+/// the default prometheus metrics is http://0.0.0.0:3001/metrics.
+/// ip and port can modified by [`PrometheusMetrics::get_metrics_addr`]
+/// url path can modified by [`PrometheusMetrics::get_metrics_path`]
 #[async_trait]
 pub trait PrometheusMetrics {
     fn get_exponential_seconds() -> Vec<f64> {
@@ -43,7 +48,11 @@ pub trait PrometheusMetrics {
 
     fn get_prometheus_app() -> Router {
         let recorder_handle = Self::get_prometheus_handle();
-        Router::new().route("/metrics", get(move || ready(recorder_handle.render())))
+        Router::new().route(Self::get_metrics_path(), get(move || ready(recorder_handle.render())))
+    }
+
+    fn get_metrics_path() -> &'static str {
+        "/metrics"
     }
 
     fn get_metrics_addr() -> SocketAddr {
@@ -60,6 +69,7 @@ pub trait PrometheusMetrics {
     }
 }
 
+/// a middle record the request info by added into axum middlewares
 pub async fn track_metrics<B>(req: Request<B>, next: Next<B>) -> Response {
     let start = Instant::now();
     let path = if let Some(matched_path) = req.extensions().get::<MatchedPath>() {

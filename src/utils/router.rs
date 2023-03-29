@@ -12,10 +12,10 @@ use axum::response::IntoResponse;
 ///     .route("/", get(|| async { "Hello world!"}))
 ///     .fallback(handle_not_found);
 /// # async {
-/// # axum::Server::bind(&"".parse().unwrap())
-/// #     .serve(app.into_make_service())
-/// #     .await
-/// #     .unwrap();
+/// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+///      .serve(app.into_make_service())
+///      .await
+///      .unwrap();
 /// # };
 /// ```
 pub async fn handle_not_found() -> impl IntoResponse {

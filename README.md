@@ -1,6 +1,6 @@
 ## `axum-restful`
 
-A restful framework based on `axum` and `sea-orm` with full features.
+A restful framework based on `axum` and `sea-orm` with full features.Inspired by django-rest-framework.
 
 ## Features
 
