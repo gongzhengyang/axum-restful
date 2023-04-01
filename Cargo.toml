@@ -2,11 +2,12 @@
 name = "axum-restful"
 version = "0.2.0"
 edition = "2021"
+categories = ["web-programming::http-server", "asynchronous"]
 description = "A restful framework based on axum and sea-orm with full features"
 keywords = ["axum", "sea-orm", "restful"]
 authors = ["Gongzhengyang <gongzhengyangfindyourdream@gmail.com>"]
 license = "MIT OR Apache-2.0"
-documentation = "https://github.com:gongzhengyang/axum-restful"
+readme = "README.md"
 repository = "https://github.com:gongzhengyang/axum-restful"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
