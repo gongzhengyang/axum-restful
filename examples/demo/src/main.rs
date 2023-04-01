@@ -10,24 +10,7 @@ use entities::student;
 
 mod entities;
 
-#[tokio::main]
-async fn main() {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-    let db = axum_restful::get_db_connection_pool().await;
-    let _ = migration::Migrator::down(db, None).await;
-    migration::Migrator::up(db, None).await.unwrap();
-    tracing::info!("migrate success");
-
-    struct StudentView;
-    impl ModelView<student::ActiveModel> for StudentView {}
-    let path = "/api/student";
-    let app = Router::new().nest(path, StudentView::get_http_routes());
+async fn test_curd_operate_correct(app: Router) {
     let client = TestClient::new(app.clone());
 
     // test POST create a instance
@@ -86,6 +69,27 @@ async fn main() {
     assert_eq!(results.len(), 0);
 
     tracing::info!("all tests success");
+}
+
+#[tokio::main]
+async fn main() {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+    let db = axum_restful::get_db_connection_pool().await;
+    let _ = migration::Migrator::down(db, None).await;
+    migration::Migrator::up(db, None).await.unwrap();
+    tracing::info!("migrate success");
+
+    struct StudentView;
+    impl ModelView<student::ActiveModel> for StudentView {}
+    let path = "/api/student";
+    let app = Router::new().nest(path, StudentView::get_http_routes());
+    test_curd_operate_correct(app.clone()).await;
 
     let addr = "0.0.0.0:3000";
     tracing::info!("listen at {addr}");
