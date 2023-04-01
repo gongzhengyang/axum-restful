@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+  
+
+# 0.2.0(1. April, 2023)
+
 - **added:** Add views with create, update, query methods
-- **added:** Add default 404 handler, graceful shutdown, tls support in utils
-- **added:** Add crate AppError impl anyhow::Error
-- **added:** Add prometheus metrics server
+- **added:** Add default 404 handler, graceful shutdown, `tls` support in `utils`
+- **added:** Add crate `AppError impl` anyhow::Error
+- **added:** Add `prometheus` metrics server
