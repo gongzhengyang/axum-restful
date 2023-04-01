@@ -12,6 +12,20 @@ use hyper::{Body, Server};
 use tower::make::Shared;
 use tower_service::Service;
 
+/// A struct for test request
+/// ```rust,no_run
+/// use axum::{Router, routing::get, http::StatusCode};
+/// use axum_restful::test_helpers::TestClient;
+///
+/// let app = Router::new().route("/hello", get(|| async {"Hello, world"}));
+/// let client = TestClient::new(app);
+/// # async {
+/// let res = client.get("/hello").send().await;
+/// assert_eq!(res.status(), StatusCode::OK);
+/// assert_eq!(res.text().await, "Hello, world");
+/// # };
+/// ```
+///
 pub struct TestClient {
     client: reqwest::Client,
     addr: SocketAddr,
@@ -29,7 +43,6 @@ impl TestClient {
     {
         let listener = TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
         let addr = listener.local_addr().unwrap();
-        println!("Listening on {addr}");
 
         tokio::spawn(async move {
             let server = Server::from_tcp(listener).unwrap().serve(Shared::new(svc));

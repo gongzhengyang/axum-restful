@@ -21,7 +21,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Student::Name).string().not_null())
                     .col(ColumnDef::new(Student::Region).string().not_null())
-                    .col(ColumnDef::new(Student::Age).string().not_null())
+                    .col(ColumnDef::new(Student::Age).small_integer().not_null())
                     .to_owned(),
             )
             .await

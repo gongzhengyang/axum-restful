@@ -11,7 +11,7 @@ pub struct Model {
     pub id: i64,
     pub name: String,
     pub region: String,
-    pub age: String,
+    pub age: i16,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
