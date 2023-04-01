@@ -87,7 +87,9 @@ async fn main() {
 
     tracing::info!("all tests success");
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    let addr = "0.0.0.0:3000";
+    tracing::info!("listen at {addr}");
+    axum::Server::bind(&addr.parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap()
