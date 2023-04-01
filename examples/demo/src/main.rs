@@ -28,7 +28,7 @@ async fn main() {
     impl ModelView<student::ActiveModel> for StudentView {}
     let path = "/api/student";
     let app = Router::new().nest(path, StudentView::get_http_routes());
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.clone());
 
     // test POST create a instance
     let body = serde_json::json!({"name": "test-name", "region": "test-region", "age": 11});
@@ -86,4 +86,10 @@ async fn main() {
     assert_eq!(results.len(), 0);
 
     tracing::info!("all tests success");
+
+    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+        .serve(app.into_make_service())
+        .await
+        .unwrap()
+
 }

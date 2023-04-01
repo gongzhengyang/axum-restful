@@ -13,7 +13,7 @@ static DB_CONNECTION: OnceCell<DatabaseConnection> = OnceCell::const_new();
 ///
 /// env **`SQLX_LOGGING`** to config the sqlx logging, default is **`false`**, can chaneg into **`true`**
 ///
-/// env **`SQLX_LOGGING_LEVEL`** to config the sqlx logging level, default is [`info`], choices is [`debug`], [`info`], [`warning`]..., same as [`log::Level`].
+/// env **`SQLX_LOGGING_LEVEL`** to config the sqlx logging level, default is `info`, choices is `debug`, `info`, `warning`..., same as `log::Level`.
 pub async fn get_db_connection_pool() -> &'static DatabaseConnection {
     DB_CONNECTION
         .get_or_init(|| async {
