@@ -1,16 +1,17 @@
 use axum::http::StatusCode;
 use axum::Router;
-use sea_orm::EntityTrait;
+use sea_orm::{DatabaseConnection, EntityTrait};
 use sea_orm_migration::prelude::MigratorTrait;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use axum_restful::test_helpers::TestClient;
 use axum_restful::views::ModelView;
+use axum_restful::swagger::SwaggerGenerator;
 use entities::student;
 
 mod entities;
 
-async fn test_curd_operate_correct(app: Router) {
+async fn test_curd_operate_correct(app: Router, path: &str, db: &DatabaseConnection) {
     let client = TestClient::new(app.clone());
 
     // test POST create a instance
@@ -21,7 +22,7 @@ async fn test_curd_operate_correct(app: Router) {
         id: 1,
         name: "test-name".to_owned(),
         region: "test-region".to_owned(),
-        age: 11
+        age: 11,
     };
     let query_model = student::Entity::find().one(db).await.unwrap().unwrap();
     assert_eq!(query_model, post_model);
@@ -75,8 +76,7 @@ async fn test_curd_operate_correct(app: Router) {
 async fn main() {
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -89,13 +89,15 @@ async fn main() {
     impl ModelView<student::ActiveModel> for StudentView {}
     let path = "/api/student";
     let app = Router::new().nest(path, StudentView::get_http_routes());
-    test_curd_operate_correct(app.clone()).await;
+    test_curd_operate_correct(app.clone(), path, db).await;
 
-    let addr = "0.0.0.0:3000";
-    tracing::info!("listen at {addr}");
-    axum::Server::bind(&addr.parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap()
-
+    // let addr = "0.0.0.0:3000";
+    // tracing::info!("listen at {addr}");
+    // axum::Server::bind(&addr.parse().unwrap())
+    //     .serve(app.into_make_service())
+    //     .await
+    //     .unwrap()
+    // struct Swagger;
+    // impl SwaggerGenerator for Swagger {}
+    // Swagger::api_server().await
 }

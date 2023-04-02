@@ -15,6 +15,10 @@ use sea_orm::{
 };
 use serde::Serialize;
 use serde_json::Value;
+use utoipa::{
+    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
+    Modify, OpenApi,
+};
 
 use crate::{db, AppError};
 
@@ -78,6 +82,7 @@ where
     /// GET list results with /api
     /// you can set page_size and page_num to page results with url like /api?page_size=10 or /api?page_size=10&page_num=1
     /// return results with StatusCode::OK
+    // #[]
     async fn http_list(Query(query): Query<Value>) -> Result<Json<Value>, AppError> {
         let db = Self::get_db_connection().await;
         let page_size = Self::get_page_size(&query);
@@ -159,5 +164,25 @@ where
                     .delete(Self::http_delete),
             )
             .route("/", get(Self::http_list).post(Self::http_create))
+    }
+
+    fn openapi_request_body() {
+
+    }
+
+    fn openapi() {
+        #[derive(OpenApi)]
+        #[openapi(
+            modifiers(&SecurityAddon),
+            tags(
+            (name = "todo", description = "Todo items management API")
+            )
+        )]
+        struct ApiDoc;
+
+        let apis = ApiDoc::openapi();
+        println!("{apis:?}");
+
+
     }
 }
