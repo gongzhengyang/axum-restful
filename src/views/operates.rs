@@ -1,4 +1,3 @@
-use aide::OperationOutput;
 use std::str::FromStr;
 
 use async_trait::async_trait;
@@ -12,14 +11,10 @@ use axum::{
 };
 use sea_orm::{
     ActiveModelBehavior, ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel,
-    ModelTrait, PaginatorTrait, PrimaryKeyToColumn, PrimaryKeyTrait, TryFromU64,
+    ModelTrait, PaginatorTrait, PrimaryKeyTrait, TryFromU64,
 };
 use serde::Serialize;
 use serde_json::Value;
-use utoipa::{
-    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
-    Modify, OpenApi,
-};
 
 use crate::{db, AppError};
 

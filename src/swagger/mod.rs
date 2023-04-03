@@ -1,8 +1,5 @@
 use std::sync::Arc;
 
-use crate::views::ModelView;
-use crate::AppError;
-use aide::transform::TransformOperation;
 use aide::{
     axum::{
         routing::{get, get_with},
@@ -10,8 +7,7 @@ use aide::{
     },
     openapi::OpenApi,
     redoc::Redoc,
-    transform::TransformOpenApi,
-    OperationOutput,
+    transform::{TransformOpenApi, TransformOperation},
 };
 use async_trait::async_trait;
 use axum::{
@@ -19,15 +15,14 @@ use axum::{
     handler::HandlerWithoutStateExt,
     http::{header, StatusCode, Uri},
     response::{IntoResponse, Response},
-    Extension, Json, Router, ServiceExt,
+    Extension, Json,
 };
 use rust_embed::RustEmbed;
 use schemars::JsonSchema;
-use sea_orm::{
-    ActiveModelBehavior, ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel,
-    ModelTrait, PaginatorTrait, PrimaryKeyToColumn, PrimaryKeyTrait, TryFromU64,
-};
+use sea_orm::{ActiveModelBehavior, ActiveModelTrait, EntityTrait, IntoActiveModel};
 use serde::Serialize;
+
+use crate::views::ModelView;
 
 #[async_trait]
 pub trait SwaggerGenerator<T>: 'static + ModelView<T>
