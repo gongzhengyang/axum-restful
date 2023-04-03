@@ -146,18 +146,21 @@ where
     }
 
     /// get http routers with full operates
-    fn get_http_routes() -> Router
+    fn http_router(nest_prefix: &'static str) -> Router
     where
         Self: Send + 'static,
     {
-        Router::new()
-            .route(
-                "/:id",
-                get(Self::http_retrieve)
-                    .patch(Self::http_partial_update)
-                    .put(Self::http_update)
-                    .delete(Self::http_delete),
-            )
-            .route("/", get(Self::http_list).post(Self::http_create))
+        Router::new().nest(
+            nest_prefix,
+            Router::new()
+                .route(
+                    "/:id",
+                    get(Self::http_retrieve)
+                        .patch(Self::http_partial_update)
+                        .put(Self::http_update)
+                        .delete(Self::http_delete),
+                )
+                .route("/", get(Self::http_list).post(Self::http_create)),
+        )
     }
 }

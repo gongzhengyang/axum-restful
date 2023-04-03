@@ -38,5 +38,4 @@ pem = "1.0"
 rust-embed = "6.6"
 aide = { version = "0.10", features = ["redoc", "macros", "axum-extra-query"] }
 mime_guess = "2"
-utoipa = "3.2"
 schemars = "= 0.8.12"

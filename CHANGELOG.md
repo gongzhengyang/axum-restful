@@ -6,8 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 # Unreleased
-
 - None.
+
+  
+
+# 0.3.0(3. April, 2023)
+
+- **added:** add initial support for swagger based on [aide](https://github.com/tamasfe/aide) project, swagger support still needs a lot of improvement
 
   
 

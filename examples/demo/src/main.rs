@@ -4,11 +4,11 @@ use sea_orm::{DatabaseConnection, EntityTrait};
 use sea_orm_migration::prelude::MigratorTrait;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use crate::entities::student::ActiveModel;
+use axum_restful::swagger::SwaggerGenerator;
 use axum_restful::test_helpers::TestClient;
 use axum_restful::views::ModelView;
-use axum_restful::swagger::SwaggerGenerator;
 use entities::student;
-use crate::entities::student::ActiveModel;
 
 mod entities;
 
@@ -88,20 +88,22 @@ async fn main() {
 
     struct StudentView;
     impl ModelView<ActiveModel> for StudentView {}
-    impl axum_restful::swagger::SwaggerGenerator<student::ActiveModel> for StudentView {}
+
 
     let path = "/api/student";
-    let app = Router::new().nest(path, StudentView::get_http_routes());
+    let app = StudentView::http_router(path);
     test_curd_operate_correct(app.clone(), path, db).await;
 
-    StudentView::api_server().await
-    // let addr = "0.0.0.0:3000";
-    // tracing::info!("listen at {addr}");
-    // axum::Server::bind(&addr.parse().unwrap())
-    //     .serve(app.into_make_service())
-    //     .await
-    //     .unwrap()
-    // struct Swagger;
-    // impl SwaggerGenerator for Swagger {}
-    // Swagger::api_server().await
+    // if you want to generate swagger docs
+    // impl OperationInput and SwaggerGenerator and change app into http_routers_with_swagger
+    impl aide::operation::OperationInput for student::Model {}
+    impl axum_restful::swagger::SwaggerGenerator<student::ActiveModel> for StudentView {}
+    let app = StudentView::http_router_with_swagger(path);
+
+    let addr = "0.0.0.0:3000";
+    tracing::info!("listen at {addr}");
+    axum::Server::bind(&addr.parse().unwrap())
+        .serve(app.into_make_service())
+        .await
+        .unwrap()
 }

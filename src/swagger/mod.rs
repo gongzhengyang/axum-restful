@@ -8,6 +8,7 @@ use aide::{
     openapi::OpenApi,
     redoc::Redoc,
     transform::{TransformOpenApi, TransformOperation},
+    OperationInput,
 };
 use async_trait::async_trait;
 use axum::{
@@ -15,7 +16,7 @@ use axum::{
     handler::HandlerWithoutStateExt,
     http::{header, StatusCode, Uri},
     response::{IntoResponse, Response},
-    Extension, Json,
+    Extension, Json, Router,
 };
 use rust_embed::RustEmbed;
 use schemars::JsonSchema;
@@ -28,7 +29,8 @@ use crate::views::ModelView;
 pub trait SwaggerGenerator<T>: 'static + ModelView<T>
 where
     T: ActiveModelTrait + ActiveModelBehavior + Send + 'static + Sync,
-    <T::Entity as EntityTrait>::Model: IntoActiveModel<T> + Serialize + Sync + JsonSchema,
+    <T::Entity as EntityTrait>::Model:
+        IntoActiveModel<T> + Serialize + Sync + JsonSchema + OperationInput,
     for<'de> <T::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
 {
     async fn static_index_handler() -> Response {
@@ -73,10 +75,9 @@ where
         Json(api).into_response()
     }
 
-    fn api_docs(api: TransformOpenApi) -> TransformOpenApi {
+    fn api_docs_head_config(api: TransformOpenApi) -> TransformOpenApi {
         api.title("Aide axum Open API for axum-restful")
             .summary("axum-restful openapi")
-            .description("Axum-restful")
     }
 
     fn http_retrieve_docs(op: TransformOperation) -> TransformOperation {
@@ -86,11 +87,13 @@ where
 
     fn http_partial_update_docs(op: TransformOperation) -> TransformOperation {
         op.summary("partial update")
+            .input::<Json<<T::Entity as EntityTrait>::Model>>()
             .response_with::<200, (), _>(|res| res.description("partial update success"))
     }
 
     fn http_update_docs(op: TransformOperation) -> TransformOperation {
         op.summary("update")
+            .input::<Json<<T::Entity as EntityTrait>::Model>>()
             .response_with::<200, (), _>(|res| res.description("update success"))
     }
 
@@ -106,14 +109,14 @@ where
 
     fn http_create_docs(op: TransformOperation) -> TransformOperation {
         op.summary("create")
+            .input::<Json<<T::Entity as EntityTrait>::Model>>()
             .response_with::<201, (), _>(|res| res.description("create success"))
     }
 
-    async fn api_server() {
-        aide::gen::on_error(|error| {
-            tracing::error!("aide gen error: {error}");
-        });
-
+    fn http_router_with_swagger(nest_prefix: &'static str) -> Router
+    where
+        Self: Send + 'static,
+    {
         aide::gen::extract_schemas(true);
         let mut api = OpenApi::default();
 
@@ -135,16 +138,12 @@ where
                     .post_with(Self::http_create, Self::http_create_docs),
             );
 
-        let app = ApiRouter::new()
-            .nest_api_service("/api", model_router)
+        ApiRouter::new()
+            .nest_api_service(nest_prefix, model_router)
             .nest("/docs/swagger", static_router)
             .nest_service("/docs/openapi", Self::openapi_routes())
-            .finish_api_with(&mut api, Self::api_docs)
-            .layer(Extension(Arc::new(api)));
-        axum::Server::bind(&"0.0.0.0:3002".parse().unwrap())
-            .serve(app.into_make_service())
-            .await
-            .unwrap();
+            .finish_api_with(&mut api, Self::api_docs_head_config)
+            .layer(Extension(Arc::new(api)))
     }
 }
 
