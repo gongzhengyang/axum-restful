@@ -18,5 +18,5 @@ sea-orm = { version = "0.11", features = ["macros", "sqlx-postgres", "runtime-to
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"]}
-schemars = "= 0.8.12"
+schemars = "0.8.12"
 aide = "0.10.0"
