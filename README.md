@@ -10,6 +10,7 @@ The goal of the project is to build an enterprise-level production framework.
 - `tls` support
 - `prometheus` metrics and metrics server
 - `graceful shutdown`support
+- `swagger document` generate based on [`aide`](https://github.com/tamasfe/aide)  
 
 ## Quick start
 
