@@ -1,33 +1,18 @@
 use axum::http::StatusCode;
 use axum::Router;
-use sea_orm::EntityTrait;
+use sea_orm::{DatabaseConnection, EntityTrait};
 use sea_orm_migration::prelude::MigratorTrait;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use crate::entities::student::ActiveModel;
+use axum_restful::swagger::SwaggerGenerator;
 use axum_restful::test_helpers::TestClient;
 use axum_restful::views::ModelView;
 use entities::student;
 
 mod entities;
 
-#[tokio::main]
-async fn main() {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-    let db = axum_restful::get_db_connection_pool().await;
-    let _ = migration::Migrator::down(db, None).await;
-    migration::Migrator::up(db, None).await.unwrap();
-    tracing::info!("migrate success");
-
-    struct StudentView;
-    impl ModelView<student::ActiveModel> for StudentView {}
-    let path = "/api/student";
-    let app = Router::new().nest(path, StudentView::get_http_routes());
+async fn test_curd_operate_correct(app: Router, path: &str, db: &DatabaseConnection) {
     let client = TestClient::new(app.clone());
 
     // test POST create a instance
@@ -38,7 +23,7 @@ async fn main() {
         id: 1,
         name: "test-name".to_owned(),
         region: "test-region".to_owned(),
-        age: 11
+        age: 11,
     };
     let query_model = student::Entity::find().one(db).await.unwrap().unwrap();
     assert_eq!(query_model, post_model);
@@ -86,6 +71,34 @@ async fn main() {
     assert_eq!(results.len(), 0);
 
     tracing::info!("all tests success");
+}
+
+#[tokio::main]
+async fn main() {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+    let db = axum_restful::get_db_connection_pool().await;
+    let _ = migration::Migrator::down(db, None).await;
+    migration::Migrator::up(db, None).await.unwrap();
+    tracing::info!("migrate success");
+
+    struct StudentView;
+    impl ModelView<ActiveModel> for StudentView {}
+
+
+    let path = "/api/student";
+    let app = StudentView::http_router(path);
+    test_curd_operate_correct(app.clone(), path, db).await;
+
+    // if you want to generate swagger docs
+    // impl OperationInput and SwaggerGenerator and change app into http_routers_with_swagger
+    impl aide::operation::OperationInput for student::Model {}
+    impl axum_restful::swagger::SwaggerGenerator<student::ActiveModel> for StudentView {}
+    let app = StudentView::http_router_with_swagger(path);
 
     let addr = "0.0.0.0:3000";
     tracing::info!("listen at {addr}");
@@ -93,5 +106,4 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap()
-
 }

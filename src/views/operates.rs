@@ -35,6 +35,7 @@ where
     /// return http 201 StatusCode::CREATED
     async fn http_create(Json(data): Json<Value>) -> Result<StatusCode, AppError> {
         let active_model = T::from_json(data)?;
+        tracing::debug!("active model is {active_model:?}");
         let result = active_model.insert(Self::get_db_connection().await).await?;
         tracing::debug!("create model {result:?}");
         Ok(StatusCode::CREATED)
@@ -53,15 +54,13 @@ where
 
     /// PATCH a json body to /api/:id
     /// return http 200 StatusCode::OK if matched, or return 404 if not matched a query
-    async fn http_partial_update(
-        Path(id): Path<u64>,
-        Json(data): Json<Value>,
-    ) -> Result<StatusCode, AppError> {
+    async fn http_partial_update(Path(id): Path<u64>, Json(data): Json<Value>) -> Response {
         let model = <T::Entity as EntityTrait>::find_by_id(Self::exchange_primary_key(id))
             .one(Self::get_db_connection().await)
-            .await?;
+            .await
+            .unwrap();
         if model.is_none() {
-            return Ok(StatusCode::NOT_FOUND);
+            return StatusCode::NOT_FOUND.into_response();
         }
         let model = model.unwrap();
         let mut active_model = model.into_active_model();
@@ -72,12 +71,13 @@ where
         }
         let result = active_model.update(Self::get_db_connection().await).await;
         tracing::debug!("patch with result: {result:?}");
-        Ok(StatusCode::OK)
+        StatusCode::OK.into_response()
     }
 
     /// GET list results with /api
     /// you can set page_size and page_num to page results with url like /api?page_size=10 or /api?page_size=10&page_num=1
     /// return results with StatusCode::OK
+    // #[]
     async fn http_list(Query(query): Query<Value>) -> Result<Json<Value>, AppError> {
         let db = Self::get_db_connection().await;
         let page_size = Self::get_page_size(&query);
@@ -146,18 +146,21 @@ where
     }
 
     /// get http routers with full operates
-    fn get_http_routes() -> Router
+    fn http_router(nest_prefix: &'static str) -> Router
     where
         Self: Send + 'static,
     {
-        Router::new()
-            .route(
-                "/:id",
-                get(Self::http_retrieve)
-                    .patch(Self::http_partial_update)
-                    .put(Self::http_update)
-                    .delete(Self::http_delete),
-            )
-            .route("/", get(Self::http_list).post(Self::http_create))
+        Router::new().nest(
+            nest_prefix,
+            Router::new()
+                .route(
+                    "/:id",
+                    get(Self::http_retrieve)
+                        .patch(Self::http_partial_update)
+                        .put(Self::http_update)
+                        .delete(Self::http_delete),
+                )
+                .route("/", get(Self::http_list).post(Self::http_create)),
+        )
     }
 }

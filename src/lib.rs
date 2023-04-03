@@ -4,6 +4,7 @@
 pub mod auth;
 pub mod db;
 pub mod error;
+pub mod swagger;
 pub mod test_helpers;
 pub mod utils;
 pub mod views;

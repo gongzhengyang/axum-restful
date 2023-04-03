@@ -261,8 +261,19 @@ use entities::student;
 async fn main() {
     tracing_subscriber::fmt().init();
     struct StudentView;
+    
+    let path = "/api/student";
     impl ModelView<student::ActiveModel> for StudentView {}
-    let app = Router::new().nest("/api/student", StudentView::get_http_routes());
+    // get a 
+    let app = StudentView::http_router(path);
+    
+    // if you want to generate swagger docs
+    // impl OperationInput and SwaggerGenerator and change app into http_routers_with_swagger
+    // you still need to impl the ModelView
+    impl aide::operation::OperationInput for student::Model {}
+    impl axum_restful::swagger::SwaggerGenerator<student::ActiveModel> for StudentView {}
+    let app = StudentView::http_router_with_swagger(path);
+    
     let addr = "0.0.0.0:3000";
     tracing::info!("listen at {addr}");
     axum::Server::bind(&addr.parse().unwrap()).serve(app.into_make_service()).await.unwrap()
@@ -274,6 +285,14 @@ async fn main() {
 you can see the server is listen at port 3000
 
 #### Verify the service
+
+#### Swagger
+
+if you `impl axum_restful::swagger::SwaggerGenerator` above, then you can visit `http://127.0.0.1:3000/docs/swagger/`  at your browser, you will see a swagger document is generated
+
+![swagger-ui](https://github.com/gongzhengyang/axum-restful/blob/main/statics/swagger-ui-demo.png)
+
+#### HTTP Methods
 
 you can use `curl` or `httpie` to verify the service
 

@@ -1,5 +1,5 @@
-use std::time::Duration;
 use http::Uri;
+use std::time::Duration;
 
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use tokio::sync::OnceCell;
@@ -20,11 +20,21 @@ pub async fn get_db_connection_pool() -> &'static DatabaseConnection {
             let db_uri = std::env::var("DATABASE_URL")
                 .unwrap_or("postgres://demo-user:demo-password@localhost:5432/demo".to_owned());
             let parsed_uri = db_uri.parse::<Uri>().unwrap();
-            tracing::info!("intial {} connection at {}:{} database {}", parsed_uri.scheme_str().unwrap(), parsed_uri.host().unwrap(), parsed_uri.port().unwrap(), parsed_uri.path());
+            tracing::info!(
+                "intial {} connection at {}:{} database {}",
+                parsed_uri.scheme_str().unwrap(),
+                parsed_uri.host().unwrap(),
+                parsed_uri.port().unwrap(),
+                parsed_uri.path()
+            );
             let sqlx_logging = std::env::var("SQLX_LOGGING")
-                .unwrap_or("false".to_owned()).parse::<bool>().unwrap_or(false);
+                .unwrap_or("false".to_owned())
+                .parse::<bool>()
+                .unwrap_or(false);
             let sqlx_logging_level = std::env::var("SQLX_LOGGING_LEVEL")
-                .unwrap_or("info".to_owned()).parse::<log::LevelFilter>().unwrap();
+                .unwrap_or("info".to_owned())
+                .parse::<log::LevelFilter>()
+                .unwrap();
             let mut opt = ConnectOptions::new(db_uri);
             opt.max_connections(100)
                 .min_connections(5)
