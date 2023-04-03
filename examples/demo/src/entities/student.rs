@@ -2,15 +2,19 @@
 
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize, Default)]
+use schemars::JsonSchema;
+/// Demo student
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize, Default, JsonSchema)]
 #[sea_orm(table_name = "student")]
 pub struct Model {
     #[sea_orm(primary_key)]
     #[serde(default = "default_id")]
     pub id: i64,
+    /// student name
     pub name: String,
+    /// where the student come frome
     pub region: String,
+    /// the age of the student
     pub age: i16,
 }
 

@@ -1,3 +1,6 @@
+use aide::gen::GenContext;
+use aide::openapi::Operation;
+use aide::OperationOutput;
 /// Copy from axum/examples/anyhow-error-response/src/main.rs
 use axum::{
     http::StatusCode,
@@ -28,4 +31,8 @@ where
     fn from(err: E) -> Self {
         Self(err.into())
     }
+}
+
+impl OperationOutput for AppError {
+    type Inner = Self;
 }

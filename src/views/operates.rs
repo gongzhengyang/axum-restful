@@ -1,3 +1,4 @@
+use aide::OperationOutput;
 use std::str::FromStr;
 
 use async_trait::async_trait;
@@ -11,7 +12,7 @@ use axum::{
 };
 use sea_orm::{
     ActiveModelBehavior, ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel,
-    ModelTrait, PaginatorTrait, PrimaryKeyTrait, TryFromU64,
+    ModelTrait, PaginatorTrait, PrimaryKeyToColumn, PrimaryKeyTrait, TryFromU64,
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -39,6 +40,7 @@ where
     /// return http 201 StatusCode::CREATED
     async fn http_create(Json(data): Json<Value>) -> Result<StatusCode, AppError> {
         let active_model = T::from_json(data)?;
+        tracing::debug!("active model is {active_model:?}");
         let result = active_model.insert(Self::get_db_connection().await).await?;
         tracing::debug!("create model {result:?}");
         Ok(StatusCode::CREATED)
@@ -57,15 +59,13 @@ where
 
     /// PATCH a json body to /api/:id
     /// return http 200 StatusCode::OK if matched, or return 404 if not matched a query
-    async fn http_partial_update(
-        Path(id): Path<u64>,
-        Json(data): Json<Value>,
-    ) -> Result<StatusCode, AppError> {
+    async fn http_partial_update(Path(id): Path<u64>, Json(data): Json<Value>) -> Response {
         let model = <T::Entity as EntityTrait>::find_by_id(Self::exchange_primary_key(id))
             .one(Self::get_db_connection().await)
-            .await?;
+            .await
+            .unwrap();
         if model.is_none() {
-            return Ok(StatusCode::NOT_FOUND);
+            return StatusCode::NOT_FOUND.into_response();
         }
         let model = model.unwrap();
         let mut active_model = model.into_active_model();
@@ -76,7 +76,7 @@ where
         }
         let result = active_model.update(Self::get_db_connection().await).await;
         tracing::debug!("patch with result: {result:?}");
-        Ok(StatusCode::OK)
+        StatusCode::OK.into_response()
     }
 
     /// GET list results with /api
@@ -164,25 +164,5 @@ where
                     .delete(Self::http_delete),
             )
             .route("/", get(Self::http_list).post(Self::http_create))
-    }
-
-    fn openapi_request_body() {
-
-    }
-
-    fn openapi() {
-        #[derive(OpenApi)]
-        #[openapi(
-            modifiers(&SecurityAddon),
-            tags(
-            (name = "todo", description = "Todo items management API")
-            )
-        )]
-        struct ApiDoc;
-
-        let apis = ApiDoc::openapi();
-        println!("{apis:?}");
-
-
     }
 }

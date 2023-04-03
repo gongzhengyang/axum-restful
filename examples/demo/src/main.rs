@@ -8,6 +8,7 @@ use axum_restful::test_helpers::TestClient;
 use axum_restful::views::ModelView;
 use axum_restful::swagger::SwaggerGenerator;
 use entities::student;
+use crate::entities::student::ActiveModel;
 
 mod entities;
 
@@ -86,11 +87,14 @@ async fn main() {
     tracing::info!("migrate success");
 
     struct StudentView;
-    impl ModelView<student::ActiveModel> for StudentView {}
+    impl ModelView<ActiveModel> for StudentView {}
+    impl axum_restful::swagger::SwaggerGenerator<student::ActiveModel> for StudentView {}
+
     let path = "/api/student";
     let app = Router::new().nest(path, StudentView::get_http_routes());
     test_curd_operate_correct(app.clone(), path, db).await;
 
+    StudentView::api_server().await
     // let addr = "0.0.0.0:3000";
     // tracing::info!("listen at {addr}");
     // axum::Server::bind(&addr.parse().unwrap())

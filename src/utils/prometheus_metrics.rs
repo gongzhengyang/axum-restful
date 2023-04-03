@@ -48,7 +48,10 @@ pub trait PrometheusMetrics {
 
     fn get_prometheus_app() -> Router {
         let recorder_handle = Self::get_prometheus_handle();
-        Router::new().route(Self::get_metrics_path(), get(move || ready(recorder_handle.render())))
+        Router::new().route(
+            Self::get_metrics_path(),
+            get(move || ready(recorder_handle.render())),
+        )
     }
 
     fn get_metrics_path() -> &'static str {
