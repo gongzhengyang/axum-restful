@@ -1,6 +1,6 @@
 [package]
 name = "axum-restful"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 categories = ["web-programming::http-server", "asynchronous"]
 description = "A restful framework based on axum and sea-orm."
