@@ -76,15 +76,18 @@ Configure dependencies and workspace in `Cargo.toml`
 members = [".", "migration"]
 
 [dependencies]
-axum-restful = "0.2"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+axum-restful = "0.3"
 axum = "0.6"
-sea-orm-migration = {version = "= 0.11.1", features = ["sqlx-postgres", "runtime-tokio-rustls",]}
+migration = { path = "./migration"}
+sea-orm-migration = {version = "0.11.1", features = ["sqlx-postgres", "runtime-tokio-rustls",]}
 sea-orm = { version = "0.11", features = ["macros", "sqlx-postgres", "runtime-tokio-rustls"] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"]}
-tracing-subscriber = "0.3"
-tracing = "0.1"
+schemars = "0.8.12"
+aide = "0.10.0"
 ```
 
 Setup the migration directory in `./migration`
@@ -167,7 +170,7 @@ edit `migration/Cargo.toml` to add dependencies
 ```toml
 [dependencies]
 ...
-axum-restful = "0.2"
+axum-restful = "0.3"
 ```
 
 edit `migration/src/main.rs`  to specific a database connection an migrate 
