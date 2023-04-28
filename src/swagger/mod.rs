@@ -25,6 +25,19 @@ use serde::Serialize;
 
 use crate::views::ModelView;
 
+/// generate swagger docs for service
+/// when the service is up
+/// you can visit http://{ipaddress}:{port}/docs/swagger/ for swagger doc
+/// and visit http://{ipaddress}:{port}/docs/openapi for openapi doc
+/// ```rust,no_run
+/// use axum_restful::swagger::SwaggerGenerator;
+/// use axum_restful::views::ModelView;
+///
+/// struct StudentView;
+/// impl ModelView<ActiveModel> for StudentView {}
+/// impl axum_restful::swagger::SwaggerGenerator<student::ActiveModel> for StudentView {}
+/// let app = StudentView::http_router_with_swagger(path);
+/// ```
 #[async_trait]
 pub trait SwaggerGenerator<T>: 'static + ModelView<T>
 where
@@ -140,7 +153,7 @@ where
 
         ApiRouter::new()
             .nest_api_service(nest_prefix, model_router)
-            .nest("/docs/swagger", static_router)
+            .nest("/docs/swagger/", static_router)
             .nest_service("/docs/openapi", Self::openapi_routes())
             .finish_api_with(&mut api, Self::api_docs_head_config)
             .layer(Extension(Arc::new(api)))
@@ -148,7 +161,7 @@ where
 }
 
 #[derive(RustEmbed)]
-#[folder = "statics/swagger"]
+#[folder = "$CARGO_MANIFEST_DIR/statics/swagger"]
 struct Asset;
 
 pub struct StaticFile<T>(pub T);

@@ -1,6 +1,6 @@
 [package]
 name = "axum-restful"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 categories = ["web-programming::http-server", "asynchronous"]
 description = "A restful framework based on axum and sea-orm."
@@ -29,13 +29,14 @@ bytes = "1.4"
 http = "0.2.9"
 hyper = "0.14.25"
 tower = "0.4.13"
+tower-http = { version = "0.4.0", features = ["full"] }
 tower-service = "0.3.2"
 reqwest = { version = "0.11.14", default-features = false, features = ["json", "stream", "multipart"] }
 metrics-exporter-prometheus = "0.11"
 metrics = "0.20"
 rcgen = "0.10.0"
 pem = "1.0"
-rust-embed = "6.6"
+rust-embed = { version = "6.6", features = ["compression", "interpolate-folder-path", "debug-embed"]}
 aide = { version = "0.10", features = ["redoc", "macros", "axum-extra-query"] }
 mime_guess = "2"
 schemars = "0.8.12"
