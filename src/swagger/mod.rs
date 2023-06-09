@@ -29,15 +29,6 @@ use crate::views::ModelView;
 /// when the service is up
 /// you can visit http://{ipaddress}:{port}/docs/swagger/ for swagger doc
 /// and visit http://{ipaddress}:{port}/docs/openapi for openapi doc
-/// ```rust,no_run
-/// use axum_restful::swagger::SwaggerGenerator;
-/// use axum_restful::views::ModelView;
-///
-/// struct StudentView;
-/// impl ModelView<ActiveModel> for StudentView {}
-/// impl axum_restful::swagger::SwaggerGenerator<student::ActiveModel> for StudentView {}
-/// let app = StudentView::http_router_with_swagger(path);
-/// ```
 #[async_trait]
 pub trait SwaggerGenerator<T>: 'static + ModelView<T>
 where
