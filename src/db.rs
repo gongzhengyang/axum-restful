@@ -45,7 +45,6 @@ pub async fn get_db_connection_pool() -> &'static DatabaseConnection {
                 .sqlx_logging(sqlx_logging)
                 .set_schema_search_path("public".to_owned())
                 .sqlx_logging_level(sqlx_logging_level); // Setting default PostgreSQL schema
-
             Database::connect(opt)
                 .await
                 .expect("connect database error")

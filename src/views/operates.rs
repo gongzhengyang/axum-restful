@@ -18,6 +18,46 @@ use serde_json::Value;
 
 use crate::{db, AppError};
 
+#[macro_export]
+macro_rules! checked_response {
+    ($value:expr, $status:expr) => {
+        match $value {
+            Ok(_) => $status.into_response(),
+            Err(e) => (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed with: {e:?}"),
+            )
+                .into_response(),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! generate_by_params {
+    ($key:ident, $key_display:expr, $default:expr) => {
+        paste::paste! {
+            fn get_page_size(query: &Value) -> u64 {
+                Self::[<inner_get_page_ $key>](query).unwrap_or(Self::[<default_page_ $key>]())
+            }
+
+            fn [<inner_get_page_ $key>](query: &Value) -> Option<u64> {
+                let value = query.get(Self::[<page_ $key _param>]())?;
+                value.as_u64()
+            }
+
+            #[inline]
+            fn [<page_ $key _param>]() -> &'static str {
+                concat!("page_", $key_display)
+            }
+
+            #[inline]
+            fn [<default_page_ $key>]() -> u64 {
+                $default
+            }
+        }
+    };
+}
+
 #[async_trait]
 pub trait ModelView<T>
 where
@@ -77,7 +117,6 @@ where
     /// GET list results with /api
     /// you can set page_size and page_num to page results with url like /api?page_size=10 or /api?page_size=10&page_num=1
     /// return results with StatusCode::OK
-    // #[]
     async fn http_list(Query(query): Query<Value>) -> Result<Json<Value>, AppError> {
         let db = Self::get_db_connection().await;
         let page_size = Self::get_page_size(&query);
@@ -94,16 +133,6 @@ where
                 .await?
         };
         Ok(Json(serde_json::json!(results)))
-    }
-
-    fn get_page_size(query: &Value) -> u64 {
-        let page_size = query.get("page_size");
-        if let Some(page_size) = page_size {
-            if let Some(page_size) = page_size.as_u64() {
-                return page_size;
-            }
-        }
-        0
     }
 
     /// GET a single query result with /api/:id
@@ -127,14 +156,16 @@ where
         let model = <T::Entity as EntityTrait>::find_by_id(pk).one(db).await;
         if let Ok(Some(value)) = model {
             let delete = value.delete(db).await;
-            if delete.is_ok() {
-                StatusCode::NO_CONTENT.into_response()
-            } else {
-                (StatusCode::INTERNAL_SERVER_ERROR, format!("{:?}", delete)).into_response()
-            }
+            checked_response!(delete, StatusCode::NO_CONTENT)
         } else {
             StatusCode::NOT_FOUND.into_response()
         }
+    }
+
+    async fn http_delete_all() -> Response {
+        let db = Self::get_db_connection().await;
+        let result = <T::Entity as EntityTrait>::delete_many().exec(db).await;
+        checked_response!(result, StatusCode::NO_CONTENT)
     }
 
     /// change a value u64 into primary key
@@ -144,6 +175,8 @@ where
         <<T::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType::try_from_u64(id)
             .unwrap()
     }
+
+    generate_by_params! {size, "size", 20}
 
     /// get http routers with full operates
     fn http_router(nest_prefix: &'static str) -> Router
