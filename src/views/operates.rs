@@ -11,7 +11,7 @@ use axum::{
 };
 use sea_orm::{
     ActiveModelBehavior, ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel,
-    ModelTrait, PaginatorTrait, PrimaryKeyTrait, TryFromU64,
+    Iterable, ModelTrait, PaginatorTrait, PrimaryKeyToColumn, PrimaryKeyTrait, TryFromU64,
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -36,7 +36,7 @@ macro_rules! checked_response {
 macro_rules! generate_by_params {
     ($key:ident, $key_display:expr, $default:expr) => {
         paste::paste! {
-            fn get_page_size(query: &Value) -> u64 {
+            fn [<get_page_ $key>](query: &Value) -> u64 {
                 Self::[<inner_get_page_ $key>](query).unwrap_or(Self::[<default_page_ $key>]())
             }
 
@@ -74,7 +74,11 @@ where
     /// POST a json body to /api and create a line in database
     /// return http 201 StatusCode::CREATED
     async fn http_create(Json(data): Json<Value>) -> Result<StatusCode, AppError> {
-        let active_model = T::from_json(data)?;
+        let mut active_model = T::from_json(data)?;
+        for key in <T::Entity as EntityTrait>::PrimaryKey::iter() {
+            let col = key.into_column();
+            active_model.not_set(col);
+        }
         tracing::debug!("active model is {active_model:?}");
         let result = active_model.insert(Self::get_db_connection().await).await?;
         tracing::debug!("create model {result:?}");
@@ -177,6 +181,7 @@ where
     }
 
     generate_by_params! {size, "size", 20}
+    generate_by_params! {num, "num", 1}
 
     /// get http routers with full operates
     fn http_router(nest_prefix: &'static str) -> Router
@@ -193,7 +198,12 @@ where
                         .put(Self::http_update)
                         .delete(Self::http_delete),
                 )
-                .route("/", get(Self::http_list).post(Self::http_create)),
+                .route(
+                    "/",
+                    get(Self::http_list)
+                        .post(Self::http_create)
+                        .delete(Self::http_delete_all),
+                ),
         )
     }
 }

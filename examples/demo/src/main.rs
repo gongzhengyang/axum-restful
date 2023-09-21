@@ -1,14 +1,16 @@
 use axum::http::StatusCode;
 use axum::Router;
+use schemars::JsonSchema;
 use sea_orm::{DatabaseConnection, EntityTrait};
 use sea_orm_migration::prelude::MigratorTrait;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::entities::student::ActiveModel;
 use axum_restful::swagger::SwaggerGenerator;
 use axum_restful::test_helpers::TestClient;
 use axum_restful::views::ModelView;
 use entities::student;
+
+use crate::entities::student::ActiveModel;
 
 mod entities;
 
@@ -86,9 +88,10 @@ async fn main() {
     migration::Migrator::up(db, None).await.unwrap();
     tracing::info!("migrate success");
 
+    /// student
+    #[derive(JsonSchema)]
     struct StudentView;
     impl ModelView<ActiveModel> for StudentView {}
-
 
     let path = "/api/student";
     let app = StudentView::http_router(path);
@@ -98,7 +101,7 @@ async fn main() {
     // impl OperationInput and SwaggerGenerator and change app into http_routers_with_swagger
     impl aide::operation::OperationInput for student::Model {}
     impl axum_restful::swagger::SwaggerGenerator<student::ActiveModel> for StudentView {}
-    let app = StudentView::http_router_with_swagger(path);
+    let app = StudentView::http_router_with_swagger(path, StudentView::model_api_router());
 
     let addr = "0.0.0.0:3000";
     tracing::info!("listen at {addr}");

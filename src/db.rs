@@ -35,8 +35,8 @@ pub async fn get_db_connection_pool() -> &'static DatabaseConnection {
                 .unwrap_or("info".to_owned())
                 .parse::<log::LevelFilter>()
                 .unwrap();
-            let mut opt = ConnectOptions::new(db_uri);
-            opt.max_connections(100)
+            let opt = ConnectOptions::new(db_uri)
+                .max_connections(100)
                 .min_connections(5)
                 .connect_timeout(Duration::from_secs(5))
                 .acquire_timeout(Duration::from_secs(5))
@@ -44,7 +44,8 @@ pub async fn get_db_connection_pool() -> &'static DatabaseConnection {
                 .max_lifetime(Duration::from_secs(100))
                 .sqlx_logging(sqlx_logging)
                 .set_schema_search_path("public".to_owned())
-                .sqlx_logging_level(sqlx_logging_level); // Setting default PostgreSQL schema
+                .sqlx_logging_level(sqlx_logging_level)
+                .to_owned(); // Setting default PostgreSQL schema
             Database::connect(opt)
                 .await
                 .expect("connect database error")
