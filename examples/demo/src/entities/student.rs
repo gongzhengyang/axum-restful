@@ -3,29 +3,22 @@
 use schemars::JsonSchema;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-/// Demo student
-#[derive(
-    Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize, Default, JsonSchema,
-)]
+
+#[derive(Clone, Debug, PartialEq, JsonSchema, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "student")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    // #[serde(default = "default_id")]
-    #[serde(skip_deserializing)]
     pub id: i64,
-    /// student name
     pub name: String,
-    /// where the student come frome
     pub region: String,
-    /// the age of the student
     pub age: i16,
+    pub create_time: DateTime,
+    #[sea_orm(column_type = "Double")]
+    pub score: f64,
+    pub gender: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
-
-// fn default_id() -> i64 {
-//     0
-// }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -22,6 +22,14 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Student::Name).string().not_null())
                     .col(ColumnDef::new(Student::Region).string().not_null())
                     .col(ColumnDef::new(Student::Age).small_integer().not_null())
+                    .col(ColumnDef::new(Student::CreateTime).date_time().not_null())
+                    .col(ColumnDef::new(Student::Score).double().not_null())
+                    .col(
+                        ColumnDef::new(Student::Gender)
+                            .boolean()
+                            .not_null()
+                            .default(Expr::value(true)),
+                    )
                     .to_owned(),
             )
             .await
@@ -44,4 +52,7 @@ enum Student {
     Name,
     Region,
     Age,
+    CreateTime,
+    Score,
+    Gender,
 }
