@@ -30,113 +30,114 @@ static BASIC_MODELS: Lazy<Vec<student::Model>> = Lazy::new(|| {
     models
 });
 
-async fn test_create(client: &TestClient, path: &str, db: &DatabaseConnection) {
-    for model in BASIC_MODELS.iter() {
-        let body = serde_json::json!(model);
-        let res = client.post(path).json(&body).send().await;
-        assert_eq!(res.status(), StatusCode::CREATED);
-        let query_model = student::Entity::find()
-            .order_by_desc(student::Column::Id)
-            .one(db)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(&query_model, model);
+struct HTTPOperateCheck {
+    pub client: TestClient,
+    pub path: String,
+    pub db: &'static DatabaseConnection
+}
+
+impl HTTPOperateCheck {
+    #[inline]
+    fn path(&self) -> &str {
+        &self.path
     }
-}
 
-async fn test_list(client: &TestClient, path: &str, db: &DatabaseConnection) {
-    let res = client.get(path).send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-    let models = res.json::<Vec<student::Model>>().await;
-    assert_eq!(models.len(), INSTANCE_LEN);
-    let original_models = BASIC_MODELS.iter().rev().collect::<Vec<&student::Model>>();
-    for (index, model) in models.iter().enumerate() {
-       assert_eq!(model, original_models[index]);
+    async fn test_create(&self) {
+        for model in BASIC_MODELS.iter() {
+            let body = serde_json::json!(model);
+            let res = self.client.post(self.path()).json(&body).send().await;
+            assert_eq!(res.status(), StatusCode::CREATED);
+            let query_model = student::Entity::find()
+                .order_by_desc(student::Column::Id)
+                .one(self.db)
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(&query_model, model);
+        }
     }
-}
 
-async fn test_retrive(client: &TestClient, path: &str, db: &DatabaseConnection) {
-    for model in BASIC_MODELS.iter() {
-        check_db_model_eq(model, path, client).await;
-    }
-}
-
-async fn check_db_model_eq(model: &student::Model, path: &str, client: &TestClient) {
-    let path = format!("{path}/{}", model.id);
-    let res = client.get(&path).send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(model, &res.json::<student::Model>().await);
-}
-
-async fn test_put(client: &TestClient, path: &str, db: &DatabaseConnection){
-    for model in BASIC_MODELS.iter() {
-        let mut put_model = model.clone();
-        // check wrong body id
-        put_model.id *= 10;
-        put_model.name = format!("changed {}", put_model.name);
-        put_model.region = format!("changed {} region", put_model.region);
-        put_model.age *= 2;
-        put_model.create_time = chrono::Local::now().naive_local().trunc_subsecs(3);
-        put_model.score += 99.0;
-        put_model.gender = !put_model.gender;
-        assert_ne!(model, &put_model);
-        let res = client.put(&format!("{path}/{}", model.id)).json(&put_model).send().await;
+    async fn test_list(&self) {
+        let res = self.client.get(path).send().await;
         assert_eq!(res.status(), StatusCode::OK);
-        put_model.id = model.id;
-        check_db_model_eq(&put_model, path, client).await;
+        let models = res.json::<Vec<student::Model>>().await;
+        assert_eq!(models.len(), INSTANCE_LEN);
+        let original_models = BASIC_MODELS.iter().rev().collect::<Vec<&student::Model>>();
+        for (index, model) in models.iter().enumerate() {
+            assert_eq!(model, original_models[index]);
+        }
+    }
+
+    async fn test_retrive(&self) {
+        for model in BASIC_MODELS.iter() {
+            self.check_db_model_eq(model).await;
+        }
+    }
+
+    async fn check_db_model_eq(&self, model: &student::Model) {
+        let path = format!("{}/{}",self.path(), model.id);
+        let res = self.client.get(&path).send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(model, &res.json::<student::Model>().await);
+    }
+
+    async fn reset_all_models(&self) {
+        for model in BASIC_MODELS.iter() {
+            let detail_path = format!("{}/{}", self.path(), model.id);
+            let res = self.client.put(&detail_path).json(model).send().await;
+            assert_eq!(res.status(), StatusCode::OK);
+            self.check_db_model_eq(model).await;
+        }
+    }
+
+    async fn test_put(&self){
+        for model in BASIC_MODELS.iter() {
+            let mut put_model = model.clone();
+            // check wrong body id
+            put_model.id *= 10;
+            put_model.name = format!("changed {}", put_model.name);
+            put_model.region = format!("changed {} region", put_model.region);
+            put_model.age *= 2;
+            put_model.create_time = chrono::Local::now().naive_local().trunc_subsecs(3);
+            put_model.score += 99.0;
+            put_model.gender = !put_model.gender;
+            assert_ne!(model, &put_model);
+            // check change all the fields
+            let detail_path = format!("{path}/{}", model.id);
+            let res = self.client.put(&detail_path).json(&put_model).send().await;
+            assert_eq!(res.status(), StatusCode::OK);
+            put_model.id = model.id;
+            self.check_db_model_eq(&put_model).await;
+        }
+    }
+
+    async fn test_patch(&self) {
+        for model in BASIC_MODELS.iter() {
+            let name = format!("patch {}", model.name);
+            let patch_body = serde_json!({
+                "name": name,
+            });
+            let detail_path = format!("{path}/{}", model.id);
+            let res = self.client.patch(&detail_path).json(patch_body).send().await;
+            assert_eq!(res.status(), StatusCode::OK);
+            let mut patch_model = model;
+            patch_model.name = patch_body["name"].as_str().unwrap();
+            self.check_db_model_eq(patch_model).await;
+        }
     }
 }
 
-pub async fn test_curd_operate_correct(app: Router, path: &str, db: &DatabaseConnection) {
+pub async fn test_curd_operate_correct(app: Router, path: &str, db: &'static DatabaseConnection) {
     let client = TestClient::new(app.clone());
 
-    test_create(&client, path, db).await;
-    test_list(&client, path, db).await;
-    test_retrive(&client, path, db).await;
-    test_put(&client, path, db).await;
-
-    // // detail operate or query
-    // let detail_path = format!("{path}/1");
-    // let detail_path_str = detail_path.as_str();
-    //
-    // // test PUT correct
-    // let body = serde_json::json!({"id": 1, "name": "put-name", "region": "put-region", "age": 11});
-    // let res = client.put(detail_path_str).json(&body).send().await;
-    // assert_eq!(res.status(), StatusCode::OK);
-    // let model = student::Entity::find_by_id(1)
-    //     .one(db)
-    //     .await
-    //     .unwrap()
-    //     .unwrap();
-    // let put_model = student::Model {
-    //     id: 1,
-    //     age: 11,
-    //     region: "put-region".to_owned(),
-    //     name: "put-name".to_owned(),
-    // };
-    // assert_eq!(model, put_model);
-    //
-    // // test PATCH correct
-    // let body = serde_json::json!({"name": "patch-name"});
-    // let res = client.patch(detail_path_str).json(&body).send().await;
-    // assert_eq!(res.status(), StatusCode::OK);
-    // let model = student::Entity::find().one(db).await.unwrap().unwrap();
-    // let patch_model = student::Model {
-    //     name: "patch-name".to_owned(),
-    //     ..put_model
-    // };
-    // assert_eq!(model, patch_model);
-    //
-    // // test GET a single instance
-    // let res = client.get(detail_path_str).json(&body).send().await;
-    // assert_eq!(res.status(), StatusCode::OK);
-    //
-    // // test delete a instance
-    // let res = client.delete(detail_path_str).send().await;
-    // assert_eq!(res.status(), StatusCode::NO_CONTENT);
-    // let results = student::Entity::find().all(db).await.unwrap();
-    // assert_eq!(results.len(), 0);
-    //
-    // tracing::info!("all tests success");
+    let c = HTTPOperateCheck {
+        client: TestClient::new(app.clone()),
+        path: path.to_owned(),
+        db: db
+    };
+    c.test_create().await;
+    c.test_list().await;
+    c.test_retrive().await;
+    c.test_put().await;
+    c.test_patch().await;
 }
