@@ -1,5 +1,3 @@
-use std::any::type_name;
-
 use std::sync::Arc;
 
 use aide::{
@@ -44,14 +42,6 @@ where
     <T::Entity as EntityTrait>::Model: IntoActiveModel<T> + Serialize + Sync + JsonSchema,
     for<'de> <T::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
 {
-    fn modle_name() -> String {
-        let name = type_name::<Self>().to_lowercase();
-        match name.rsplit_once("::") {
-            None => name,
-            Some((_, last)) => last.to_owned(),
-        }
-    }
-
     fn modle_schema_description() -> String {
         let mut gen = gen::SchemaGenerator::default();
         let value = serde_json::json!(Self::json_schema(&mut gen));
