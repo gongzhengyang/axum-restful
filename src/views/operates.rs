@@ -10,7 +10,6 @@ use axum::{
     routing::get,
     Json, Router,
 };
-
 use sea_orm::{
     ActiveModelBehavior, ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel,
     Iterable, ModelTrait, PaginatorTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryOrder,
@@ -20,15 +19,15 @@ use serde::Serialize;
 use serde_json::Value;
 use snafu::{OptionExt, ResultExt};
 
-use crate::error::{OperateDatabaseSnafu, PrimaryKeyNotFoundSnafu};
+use crate::error::{OperateDatabaseSnafu, OptionValueNoneSnafu, PrimaryKeyNotFoundSnafu};
 use crate::{db, error::Result};
 
 macro_rules! inner_generate_by_params {
     ($key:ident, $key_display:expr, $default:expr) => {
         paste::paste! {
-            fn [<inner_get_page_ $key>](query: &Value) -> Option<u64> {
-                let value = query.get(Self::[<page_ $key _param>]())?;
-                value.as_u64()
+            fn [<inner_get_page_ $key>](query: &Value) -> anyhow::Result<u64> {
+                let value = query.get(Self::[<page_ $key _param>]());
+                Ok(value.context(OptionValueNoneSnafu)?.as_str().unwrap_or("").parse::<u64>()?)
             }
 
             #[inline]
@@ -204,12 +203,14 @@ where
                 .await
                 .context(OperateDatabaseSnafu)?
         } else {
+            tracing::debug!("http list: fetch all");
             <T::Entity as EntityTrait>::find()
                 .order_by_desc(Self::order_by_desc())
                 .all(Self::get_db_connection().await)
                 .await
                 .context(OperateDatabaseSnafu)?
         };
+        tracing::debug!("http list: fetch results len {}", results.len());
         Ok(Json(serde_json::json!(results)))
     }
 

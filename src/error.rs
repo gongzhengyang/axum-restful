@@ -22,6 +22,12 @@ pub enum AppError {
 
     #[snafu(display("query database failed: {}", source))]
     OperateDatabase { source: DbErr, location: Location },
+
+    #[snafu(display("option value is none"))]
+    OptionValueNone { location: Location },
+
+    #[snafu(display("unkonwn error"))]
+    Unknown,
 }
 
 impl IntoResponse for AppError {
