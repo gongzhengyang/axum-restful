@@ -123,18 +123,18 @@ where
             .response::<200, Json<<T::Entity as EntityTrait>::Model>>()
     }
 
-    fn http_partial_update_summary() -> String {
-        format!(
-            "partial update an instance: {}",
-            Self::modle_schema_description()
-        )
-    }
-
-    fn http_partial_update_docs(op: TransformOperation) -> TransformOperation {
-        op.summary(&Self::http_partial_update_summary())
-            .input::<Json<<T::Entity as EntityTrait>::Model>>()
-            .response_with::<200, (), _>(|res| res.description("partial update success"))
-    }
+    // fn http_partial_update_summary() -> String {
+    //     format!(
+    //         "partial update an instance: {}",
+    //         Self::modle_schema_description()
+    //     )
+    // }
+    //
+    // fn http_partial_update_docs(op: TransformOperation) -> TransformOperation {
+    //     op.summary(&Self::http_partial_update_summary())
+    //         .input::<Json<<T::Entity as EntityTrait>::Model>>()
+    //         .response_with::<200, (), _>(|res| res.description("partial update success"))
+    // }
 
     fn http_update_summary() -> String {
         format!("update an instance {}", Self::modle_schema_description())
@@ -188,7 +188,6 @@ where
             .api_route(
                 "/:id",
                 get_with(Self::http_retrieve, Self::http_retrieve_docs)
-                    .patch_with(Self::http_partial_update, Self::http_partial_update_docs)
                     .put_with(Self::http_update, Self::http_update_docs)
                     .delete_with(Self::http_delete, Self::http_delete_docs),
             )
@@ -220,7 +219,7 @@ where
 }
 
 #[derive(RustEmbed)]
-#[folder = "$CARGO_MANIFEST_DIR/statics/swagger"]
+#[folder = "statics/swagger"]
 struct Asset;
 
 pub struct StaticFile<T>(pub T);

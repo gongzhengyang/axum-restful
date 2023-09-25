@@ -1,5 +1,4 @@
 use schemars::JsonSchema;
-use sea_orm::{EntityTrait, QueryOrder};
 use sea_orm_migration::prelude::MigratorTrait;
 
 use axum_restful::swagger::SwaggerGenerator;
@@ -30,7 +29,7 @@ async fn main() {
 
     let path = "/api/student";
     let app = StudentView::http_router(path);
-    check::test_curd_operate_correct(app.clone(), path, db).await;
+    check::check_curd_operate_correct(app.clone(), path, db).await;
 
     // if you want to generate swagger docs
     // impl OperationInput and SwaggerGenerator and change app into http_routers_with_swagger
@@ -40,6 +39,7 @@ async fn main() {
 
     let addr = "0.0.0.0:3000";
     tracing::info!("listen at {addr}");
+    tracing::info!("visit http://127.0.0.1:3000/docs/swagger/ for swagger api");
     axum::Server::bind(&addr.parse().unwrap())
         .serve(app.into_make_service())
         .await

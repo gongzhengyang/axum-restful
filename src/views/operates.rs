@@ -1,5 +1,4 @@
 use std::any::type_name;
-use std::str::FromStr;
 
 use async_trait::async_trait;
 use axum::extract::Query;
@@ -135,6 +134,7 @@ where
         Path(pk): Path<u64>,
         Json(data): Json<<T::Entity as EntityTrait>::Model>,
     ) -> Result<StatusCode> {
+        tracing::debug!("[{}] http update check: {pk}", Self::modle_name());
         Self::check_instance_exists(pk).await?;
         let mut active_model = data.into_active_model().reset_all();
         Self::set_model_primary_key(&mut active_model, pk);
@@ -160,31 +160,35 @@ where
         )
     }
 
+    /// TODO: patch need value trans into active model value
     /// PATCH a json body to /api/:id
     /// return http 200 StatusCode::OK if matched, or return 404 if not matched a query
-    async fn http_partial_update(
-        Path(pk): Path<u64>,
-        Json(data): Json<Value>,
-    ) -> Result<StatusCode> {
-        let model = Self::check_instance_exists(pk).await?;
-        let mut active_model = model.into_active_model();
-        tracing::debug!(
-            "[{}] http patch: original pk: {pk} active model: {active_model:?}",
-            Self::modle_name()
-        );
-        for (k, v) in data.as_object().unwrap() {
-            if let Ok(column) = <T::Entity as EntityTrait>::Column::from_str(k) {
-                active_model.set(column, (*v).clone().into());
-            }
-        }
-        tracing::debug!(
-            "[{}] http patch: ative model pk: {pk} active model: {active_model:?}",
-            Self::modle_name()
-        );
-        let result = active_model.update(Self::get_db_connection().await).await;
-        tracing::debug!("[{}] http patch: result {result:?}", Self::modle_name());
-        Ok(StatusCode::OK)
-    }
+    // async fn http_partial_update(
+    //     Path(pk): Path<u64>,
+    //     Json(data): Json<Value>,
+    // ) -> Result<StatusCode> {
+    //     tracing::debug!("[{}] http patch check: {pk}", Self::modle_name());
+    //     let model = Self::check_instance_exists(pk).await?;
+    //     let mut active_model = model.into_active_model();
+    //     tracing::debug!(
+    //         "[{}] http patch: original pk: {pk} active model: {active_model:?}",
+    //         Self::modle_name()
+    //     );
+    //     for (k, v) in data.as_object().unwrap() {
+    //         tracing::debug!("[{}] http patch set {}: {}", Self::modle_name(), k, v);
+    //         if let Ok(column) = <T::Entity as EntityTrait>::Column::from_str(k) {
+    //             // let col_type = column.def().get_column_type()
+    //             // active_model.set(column, v);
+    //         }
+    //     }
+    //     tracing::debug!(
+    //         "[{}] http patch: ative model pk: {pk} active model: {active_model:?}",
+    //         Self::modle_name()
+    //     );
+    //     let result = active_model.update(Self::get_db_connection().await).await;
+    //     tracing::debug!("[{}] http patch: result {result:?}", Self::modle_name());
+    //     Ok(StatusCode::OK)
+    // }
 
     fn order_by_desc() -> <T::Entity as EntityTrait>::Column;
 
@@ -279,7 +283,6 @@ where
                 .route(
                     "/:id",
                     get(Self::http_retrieve)
-                        .patch(Self::http_partial_update)
                         .put(Self::http_update)
                         .delete(Self::http_delete),
                 )

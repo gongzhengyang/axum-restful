@@ -3,9 +3,6 @@ use axum::Router;
 use chrono::SubsecRound;
 use once_cell::sync::Lazy;
 use sea_orm::{DatabaseConnection, EntityTrait, QueryOrder};
-use sea_orm_migration::prelude::MigratorTrait;
-use serde_json::de::Read;
-use std::os::fd::AsFd;
 
 use axum_restful::test_helpers::TestClient;
 
@@ -18,9 +15,9 @@ static BASIC_MODELS: Lazy<Vec<student::Model>> = Lazy::new(|| {
     for i in 1..INSTANCE_LEN + 1 {
         models.push(student::Model {
             id: i as i64,
-            /// keep id is 1
-            name: format!("test name {i}"),
-            region: format!("test region {i}"),
+            // keep id is 1
+            name: format!("check name {i}"),
+            region: format!("check region {i}"),
             age: 1 + (i as i16),
             create_time: chrono::Local::now().naive_local().trunc_subsecs(3),
             score: i as f64 / 2.0,
@@ -42,24 +39,26 @@ impl HTTPOperateCheck {
         &self.path
     }
 
-    async fn test_create(&self) {
-        tracing::info!("http ceate test");
+    async fn check_create(&self, check_equal: bool) {
+        tracing::info!("http ceate check");
         for model in BASIC_MODELS.iter() {
             let body = serde_json::json!(model);
             let res = self.client.post(self.path()).json(&body).send().await;
             assert_eq!(res.status(), StatusCode::CREATED);
-            let query_model = student::Entity::find()
-                .order_by_desc(student::Column::Id)
-                .one(self.db)
-                .await
-                .unwrap()
-                .unwrap();
-            assert_eq!(&query_model, model);
+            if check_equal {
+                let query_model = student::Entity::find()
+                    .order_by_desc(student::Column::Id)
+                    .one(self.db)
+                    .await
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(&query_model, model);
+            }
         }
     }
 
-    async fn test_list(&self) {
-        tracing::info!("http list test");
+    async fn check_list(&self) {
+        tracing::info!("http list check");
         let res = self.client.get(self.path()).send().await;
         assert_eq!(res.status(), StatusCode::OK);
         let models = res.json::<Vec<student::Model>>().await;
@@ -79,8 +78,7 @@ impl HTTPOperateCheck {
                 .send()
                 .await;
             assert_eq!(resp.status(), StatusCode::OK);
-            let results = resp.json::<Vec<student::Model>>()
-                .await;
+            let results = resp.json::<Vec<student::Model>>().await;
             assert_eq!(results.len(), page_size);
             let start = (page_num - 1) * page_size;
             assert_eq!(
@@ -90,8 +88,8 @@ impl HTTPOperateCheck {
         }
     }
 
-    async fn test_retrive(&self) {
-        tracing::info!("http retrive test");
+    async fn check_retrive(&self) {
+        tracing::info!("http retrive check");
         for model in BASIC_MODELS.iter() {
             self.check_db_model_eq(model).await;
         }
@@ -114,8 +112,8 @@ impl HTTPOperateCheck {
         }
     }
 
-    async fn test_put(&self) {
-        tracing::info!("http put test");
+    async fn check_put(&self) {
+        tracing::info!("http put check");
         for model in BASIC_MODELS.iter() {
             let mut put_model = model.clone();
             // check wrong body id
@@ -132,54 +130,97 @@ impl HTTPOperateCheck {
             let res = self.client.put(&detail_path).json(&put_model).send().await;
             assert_eq!(res.status(), StatusCode::OK);
             put_model.id = model.id;
+            tracing::debug!("----put {}", serde_json::json!(put_model));
             self.check_db_model_eq(&put_model).await;
         }
+        let resp = self
+            .client
+            .put(&format!("{}/{}", self.path(), u16::MAX))
+            .json(BASIC_MODELS.iter().next().unwrap())
+            .send()
+            .await;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 
-    async fn test_patch(&self) {
-        tracing::info!("http c test");
+    // async fn check_patch(&self) {
+    //     tracing::info!("http patch check");
+    //     for model in BASIC_MODELS.iter() {
+    //         let name = format!("patch {}", model.name);
+    //         let region = format!("patch {}", model.region);
+    //         let age = 9 + model.age;
+    //         let score = model.score + 99.0;
+    //         let patch_body = serde_json::json!({
+    //             "name": name,
+    //             "region": region,
+    //             "age": age,
+    //             "score": score,
+    //         });
+    //         let detail_path = format!("{}/{}", self.path(), model.id);
+    //         let res = self
+    //             .client
+    //             .patch(&detail_path)
+    //             .json(&patch_body)
+    //             .send()
+    //             .await;
+    //         assert_eq!(res.status(), StatusCode::OK);
+    //         let mut patch_model = model.clone();
+    //         patch_model.name = name;
+    //         patch_model.region = region;
+    //         patch_model.age = age;
+    //         patch_model.score = score;
+    //         self.check_db_model_eq(&patch_model).await;
+    //     }
+    //     let resp = self.client.patch(&format!("{}/{}", self.path(), u16::MAX)).json(BASIC_MODELS.iter().next().unwrap()).send().await;
+    //     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    // }
+
+    async fn check_delete(&self) {
+        tracing::info!("http delete single check");
         for model in BASIC_MODELS.iter() {
-            let name = format!("patch {}", model.name);
-            let region = format!("patch {}", model.region);
-            let age = 9 + model.age;
-            let score = model.score + 99.0;
-            let patch_body = serde_json::json!({
-                "name": name,
-                "region": region,
-                "age": age,
-                "score": score,
-            });
             let detail_path = format!("{}/{}", self.path(), model.id);
-            let res = self
-                .client
-                .patch(&detail_path)
-                .json(&patch_body)
-                .send()
-                .await;
-            assert_eq!(res.status(), StatusCode::OK);
-            let mut patch_model = model.clone();
-            patch_model.name = name;
-            patch_model.region = region;
-            patch_model.age = age;
-            patch_model.score = score;
-            self.check_db_model_eq(&patch_model).await;
+            let resp = self.client.delete(&detail_path).send().await;
+            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+            let resp = self.client.get(&detail_path).send().await;
+            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
         }
+        self.check_is_empty().await;
+        let resp = self
+            .client
+            .delete(&format!("{}/{}", self.path(), u16::MAX))
+            .json(BASIC_MODELS.iter().next().unwrap())
+            .send()
+            .await;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+
+        tracing::info!("recreate all");
+        self.check_create(false).await;
+        let resp = self.client.delete(self.path()).send().await;
+        assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+        self.check_is_empty().await;
+    }
+
+    async fn check_is_empty(&self) {
+        let resp = self
+            .client
+            .get(self.path())
+            .send()
+            .await
+            .json::<Vec<student::Model>>()
+            .await;
+        assert!(resp.is_empty());
     }
 }
 
-pub async fn test_curd_operate_correct(app: Router, path: &str, db: &'static DatabaseConnection) {
-    let client = TestClient::new(app.clone());
-
+pub async fn check_curd_operate_correct(app: Router, path: &str, db: &'static DatabaseConnection) {
     let c = HTTPOperateCheck {
         client: TestClient::new(app.clone()),
         path: path.to_owned(),
-        db: db,
+        db,
     };
-    c.test_create().await;
-    c.test_list().await;
-    // c.test_retrive().await;
-    // c.test_put().await;
-    // c.reset_all_models().await;
-    // c.test_patch().await;
-    // c.reset_all_models().await;
+    c.check_create(true).await;
+    c.check_list().await;
+    c.check_retrive().await;
+    c.check_put().await;
+    c.reset_all_models().await;
+    c.check_delete().await;
 }
