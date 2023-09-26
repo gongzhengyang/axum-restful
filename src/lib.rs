@@ -11,4 +11,4 @@ pub mod views;
 
 pub use db::get_db_connection_pool;
 pub use error::AppError;
-pub use views::ModelView;
+pub use views::ModelViewExt;

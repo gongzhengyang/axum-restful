@@ -70,7 +70,7 @@ macro_rules! generate_by_params {
 }
 
 #[async_trait]
-pub trait ModelView<T>
+pub trait ModelViewExt<T>
 where
     T: ActiveModelTrait + ActiveModelBehavior + Send + 'static + Sync,
     <T::Entity as EntityTrait>::Model: IntoActiveModel<T> + Serialize + Sync,

@@ -9,12 +9,16 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i64,
+    /// student name
     pub name: String,
+    /// student comen from
     pub region: String,
     pub age: i16,
+    /// this record create time
     pub create_time: DateTime,
     #[sea_orm(column_type = "Double")]
     pub score: f64,
+    /// man is true, false is women
     pub gender: bool,
 }
 

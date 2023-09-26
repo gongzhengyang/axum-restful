@@ -22,7 +22,3 @@ serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
-
-[profile.release]
-lto = true
-strip = true

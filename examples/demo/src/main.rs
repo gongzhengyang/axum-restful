@@ -1,8 +1,8 @@
 use schemars::JsonSchema;
 use sea_orm_migration::prelude::MigratorTrait;
 
-use axum_restful::swagger::SwaggerGenerator;
-use axum_restful::views::ModelView;
+use axum_restful::swagger::SwaggerGeneratorExt;
+use axum_restful::views::ModelViewExt;
 
 use crate::entities::student;
 
@@ -21,7 +21,7 @@ async fn main() {
     #[derive(JsonSchema)]
     struct StudentView;
 
-    impl ModelView<student::ActiveModel> for StudentView {
+    impl ModelViewExt<student::ActiveModel> for StudentView {
         fn order_by_desc() -> student::Column {
             student::Column::Id
         }
@@ -34,7 +34,7 @@ async fn main() {
     // if you want to generate swagger docs
     // impl OperationInput and SwaggerGenerator and change app into http_routers_with_swagger
     impl aide::operation::OperationInput for student::Model {}
-    impl axum_restful::swagger::SwaggerGenerator<student::ActiveModel> for StudentView {}
+    impl axum_restful::swagger::SwaggerGeneratorExt<student::ActiveModel> for StudentView {}
     let app = StudentView::http_router_with_swagger(path, StudentView::model_api_router());
 
     let addr = "0.0.0.0:3000";
