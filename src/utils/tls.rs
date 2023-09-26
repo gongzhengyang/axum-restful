@@ -6,12 +6,9 @@ use axum::{
     handler::HandlerWithoutStateExt,
     http::{StatusCode, Uri},
     response::Redirect,
-    BoxError,
 };
 use axum_server::tls_rustls::RustlsConfig;
 use rcgen::{date_time_ymd, Certificate, CertificateParams, DistinguishedName, DnType, SanType};
-
-use crate::AppError;
 
 /// enable https
 /// you can config the cert, private key filepath
@@ -46,12 +43,12 @@ use crate::AppError;
 /// ```
 #[async_trait]
 pub trait GenerateCertKey {
-    fn get_cert_key_path() -> Result<(String, String), AppError> {
+    fn get_cert_key_path() -> anyhow::Result<(String, String)> {
         fs::create_dir_all("certs/")?;
         Ok(("certs/cert.pem".to_owned(), "certs/key.pem".to_owned()))
     }
 
-    async fn get_rustls_config(create_if_not_exists: bool) -> Result<RustlsConfig, AppError> {
+    async fn get_rustls_config(create_if_not_exists: bool) -> anyhow::Result<RustlsConfig> {
         let (cert, key) = Self::get_cert_key_path()?;
         let cert_pathbuf = PathBuf::from(cert);
         let key_pathbuf = PathBuf::from(key);
@@ -68,7 +65,7 @@ pub trait GenerateCertKey {
             .unwrap())
     }
 
-    fn generate_cert_key() -> Result<(), AppError> {
+    fn generate_cert_key() -> anyhow::Result<()> {
         let cert = Certificate::from_params(Self::get_cert_params())?;
         let pem_serialized = cert.serialize_pem()?;
         println!("{}", pem_serialized);
@@ -96,12 +93,7 @@ pub trait GenerateCertKey {
 }
 
 pub async fn redirect_http_to_https(http_port: u16, https_port: u16, http_ip: &str) {
-    fn make_https(
-        host: String,
-        uri: Uri,
-        http_port: u16,
-        https_port: u16,
-    ) -> Result<Uri, BoxError> {
+    fn make_https(host: String, uri: Uri, http_port: u16, https_port: u16) -> anyhow::Result<Uri> {
         let mut parts = uri.into_parts();
 
         parts.scheme = Some(axum::http::uri::Scheme::HTTPS);

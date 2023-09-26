@@ -1,3 +1,3 @@
 pub mod operates;
 
-pub use operates::ModelView;
+pub use operates::ModelViewExt;

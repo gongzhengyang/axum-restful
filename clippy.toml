@@ -1,0 +1,2 @@
+# which will confilict with `snafu::{OptionExt, ResultExt}`, cause many error
+disallowed-names = ["anyhow::Context"]
