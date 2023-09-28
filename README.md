@@ -48,7 +48,14 @@ volumes:
 a `.env`file like 
 
 ```
-DATABASE_URL=postgres://demo-user:demo-password@localhost:5432/demo
+# config the base pg connect params
+POSTGRES_DB=demo
+POSTGRES_USER=demo-user
+POSTGRES_PASSWORD=demo-password
+
+# used by axum-restful framework to specific a database connection
+DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}
+
 ```
 
 finally, you can build a service with `docker compose up -d`
