@@ -55,7 +55,6 @@ POSTGRES_PASSWORD=demo-password
 
 # used by axum-restful framework to specific a database connection
 DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}
-
 ```
 
 finally, you can build a service with `docker compose up -d`
