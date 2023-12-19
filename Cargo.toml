@@ -12,7 +12,7 @@ repository = "https://github.com/gongzhengyang/axum-restful"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-awesome-operates = { path = "../awesome-operates" }
+awesome-operates = "0.1"
 aide = { version = "0.13", features = ["redoc", "macros", "axum-extra-query", "axum"] }
 anyhow = "1.0"
 async-trait = "0.1"
