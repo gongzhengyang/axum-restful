@@ -1,12 +1,17 @@
+use aide::gen::GenContext;
+use aide::openapi::Operation;
+use std::fmt::Debug;
+
 use aide::OperationOutput;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
+use schemars::JsonSchema;
 use sea_orm::DbErr;
+use serde::Serialize;
 use snafu::{Location, Snafu};
-use std::fmt::Debug;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
@@ -30,6 +35,11 @@ pub enum AppError {
     Unknown,
 }
 
+#[derive(Debug, JsonSchema, Serialize)]
+pub struct ErrorMessage {
+    pub message: String,
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let status_code = match self {
@@ -39,9 +49,9 @@ impl IntoResponse for AppError {
         tracing::error!("error happened: {self:?}");
         (
             status_code,
-            Json(serde_json::json!({
-                "message": format!("{}", self)
-            })),
+            Json(ErrorMessage {
+                message: format!("{}", self),
+            }),
         )
             .into_response()
     }
@@ -49,31 +59,27 @@ impl IntoResponse for AppError {
 
 impl OperationOutput for AppError {
     type Inner = Self;
+
+    fn operation_response(
+        ctx: &mut GenContext,
+        operation: &mut Operation,
+    ) -> Option<aide::openapi::Response> {
+        <Json<ErrorMessage> as OperationOutput>::operation_response(ctx, operation)
+    }
+
+    fn inferred_responses(
+        ctx: &mut GenContext,
+        operation: &mut Operation,
+    ) -> Vec<(Option<u16>, aide::openapi::Response)> {
+        let mut resp = vec![];
+        if let Some(response) = <() as OperationOutput>::operation_response(ctx, operation) {
+            resp.push((Some(204), response));
+        }
+        if let Some(response) = <AppError as OperationOutput>::operation_response(ctx, operation) {
+            resp.push((Some(500), response));
+        }
+        resp
+    }
 }
 
 pub type Result<T> = std::result::Result<T, AppError>;
-
-#[derive(Debug)]
-pub struct BoxedError {
-    inner: Box<dyn Send + Sync + std::error::Error>,
-}
-
-impl BoxedError {
-    pub fn new<E: Send + Sync + 'static + std::error::Error>(err: E) -> Self {
-        Self {
-            inner: Box::new(err),
-        }
-    }
-}
-
-impl std::fmt::Display for BoxedError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.inner)
-    }
-}
-
-impl std::error::Error for BoxedError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.inner.source()
-    }
-}

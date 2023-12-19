@@ -2,16 +2,16 @@ use std::sync::Arc;
 
 use aide::{
     axum::{
-        ApiRouter,
         routing::{get, get_with},
+        ApiRouter,
     },
     openapi::OpenApi,
     transform::{TransformOpenApi, TransformOperation},
 };
 use async_trait::async_trait;
 use axum::{
-    Extension,
-    Json, response::{IntoResponse, Response}, Router,
+    response::{IntoResponse, Response},
+    Extension, Json, Router,
 };
 use schemars::{gen, JsonSchema};
 use sea_orm::{ActiveModelBehavior, ActiveModelTrait, EntityTrait, IntoActiveModel};
@@ -137,7 +137,10 @@ where
             )
     }
 
-    async fn http_router_with_swagger(nest_prefix: &'static str, model_api_router: ApiRouter) -> anyhow::Result<Router>
+    async fn http_router_with_swagger(
+        nest_prefix: &'static str,
+        model_api_router: ApiRouter,
+    ) -> anyhow::Result<Router>
     where
         Self: Send + 'static,
     {
@@ -148,8 +151,10 @@ where
             awesome_operates::embed::EXTRACT_SWAGGER_DIR_PATH,
             "swagger-init.js",
             "index.html",
-            "../api.json"
-        ).build().await?;
+            "../api.json",
+        )
+        .build()
+        .await?;
         Ok(ApiRouter::new()
             .nest_api_service(nest_prefix, model_api_router)
             .nest_service("/swagger", ServeDir::new(Self::serve_dir_path()))
