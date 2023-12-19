@@ -82,9 +82,9 @@ edition = "2021"
 members = [".", "migration"]
 
 [dependencies]
-aide = "0.12"
-axum = "0.6"
-axum-restful = "0.4"
+aide = "0.13"
+axum = "0.7"
+axum-restful = "0.5"
 chrono = "0.4"
 migration = { path = "./migration" }
 once_cell = "1"
@@ -189,7 +189,7 @@ edit `migration/Cargo.toml` to add dependencies
 ```toml
 [dependencies]
 ...
-axum-restful = "0.4"
+axum-restful = "0.5"
 ```
 
 edit `migration/src/main.rs`  to specific a database connection an migrate 
@@ -278,9 +278,10 @@ edit `src/main.rs`
 ```rust
 use schemars::JsonSchema;
 use sea_orm_migration::prelude::MigratorTrait;
+use tokio::net::TcpListener;
 
-use axum_restful::swagger::SwaggerGenerator;
-use axum_restful::views::ModelView;
+use axum_restful::swagger::SwaggerGeneratorExt;
+use axum_restful::views::ModelViewExt;
 
 use crate::entities::student;
 
@@ -295,11 +296,16 @@ async fn main() {
     migration::Migrator::up(db, None).await.unwrap();
     tracing::info!("migrate success");
 
+    aide::gen::on_error(|error| {
+        tracing::error!("swagger api gen error: {error}");
+    });
+    aide::gen::extract_schemas(true);
+
     /// student
     #[derive(JsonSchema)]
     struct StudentView;
 
-    impl ModelView<student::ActiveModel> for StudentView {
+    impl ModelViewExt<student::ActiveModel> for StudentView {
         fn order_by_desc() -> student::Column {
             student::Column::Id
         }
@@ -312,17 +318,16 @@ async fn main() {
     // if you want to generate swagger docs
     // impl OperationInput and SwaggerGenerator and change app into http_routers_with_swagger
     impl aide::operation::OperationInput for student::Model {}
-    impl axum_restful::swagger::SwaggerGenerator<student::ActiveModel> for StudentView {}
-    let app = StudentView::http_router_with_swagger(path, StudentView::model_api_router());
+    impl axum_restful::swagger::SwaggerGeneratorExt<student::ActiveModel> for StudentView {}
+    let app = StudentView::http_router_with_swagger(path, StudentView::model_api_router()).await.unwrap();
 
     let addr = "0.0.0.0:3000";
     tracing::info!("listen at {addr}");
     tracing::info!("visit http://127.0.0.1:3000/docs/swagger/ for swagger api");
-    axum::Server::bind(&addr.parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap()
+    let listener = TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app.into_make_service()).await.unwrap();
 }
+
 ```
 
 `StudentView impl the ModelView<T>`, the `T` is `student::ActiveModel` that represent the `student table configure` in the database, if will has full HTTP methods with GET, POST, PUT, DELETE.
