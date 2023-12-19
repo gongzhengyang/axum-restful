@@ -49,7 +49,7 @@ where
 
     #[inline]
     fn serve_dir_path() -> &'static str {
-        awesome_operates::embed::EXTRACT_DIR_PATH
+        awesome_operates::embed::EXTRACT_SWAGGER_DIR_PATH
     }
 
     #[inline]
@@ -58,7 +58,7 @@ where
     }
 
     async fn serve_docs(Extension(api): Extension<Arc<OpenApi>>) -> Response {
-        Json(api).into_response()
+        Json(serde_json::json!(*api)).into_response()
     }
 
     fn api_docs_head_config(api: TransformOpenApi) -> TransformOpenApi {
@@ -81,7 +81,6 @@ where
 
     fn http_update_docs(op: TransformOperation) -> TransformOperation {
         op.summary(&Self::http_update_summary())
-            .input::<Json<<T::Entity as EntityTrait>::Model>>()
             .response::<200, ()>()
     }
 
@@ -118,7 +117,7 @@ where
 
     fn http_create_docs(op: TransformOperation) -> TransformOperation {
         op.summary(&Self::http_create_summary())
-            .input::<Json<<T::Entity as EntityTrait>::Model>>()
+            // .input::<Json<<T::Entity as EntityTrait>::Model>>()
             .response::<201, ()>()
     }
 
@@ -142,16 +141,11 @@ where
     where
         Self: Send + 'static,
     {
-        aide::gen::on_error(|error| {
-            tracing::error!("swagger api gen error: {error}");
-        });
-        aide::gen::extract_schemas(true);
-
         let mut api = OpenApi::default();
 
         awesome_operates::extract_all_files!(awesome_operates::embed::Asset);
         awesome_operates::swagger::InitSwagger::new(
-            awesome_operates::embed::EXTRACT_DIR_PATH,
+            awesome_operates::embed::EXTRACT_SWAGGER_DIR_PATH,
             "swagger-init.js",
             "index.html",
             "../api.json"

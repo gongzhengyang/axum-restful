@@ -2,3 +2,4 @@ Cargo.lock
 .idea/
 target/
 certs/
+examples/demo/embed_files/

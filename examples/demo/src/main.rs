@@ -18,6 +18,11 @@ async fn main() {
     migration::Migrator::up(db, None).await.unwrap();
     tracing::info!("migrate success");
 
+    aide::gen::on_error(|error| {
+        tracing::error!("swagger api gen error: {error}");
+    });
+    aide::gen::extract_schemas(true);
+
     /// student
     #[derive(JsonSchema)]
     struct StudentView;
@@ -36,7 +41,7 @@ async fn main() {
     // impl OperationInput and SwaggerGenerator and change app into http_routers_with_swagger
     impl aide::operation::OperationInput for student::Model {}
     impl axum_restful::swagger::SwaggerGeneratorExt<student::ActiveModel> for StudentView {}
-    let app = StudentView::http_router_with_swagger(path, StudentView::model_api_router());
+    let app = StudentView::http_router_with_swagger(path, StudentView::model_api_router()).await.unwrap();
 
     let addr = "0.0.0.0:3000";
     tracing::info!("listen at {addr}");

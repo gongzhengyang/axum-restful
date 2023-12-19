@@ -118,6 +118,7 @@ impl HTTPOperateCheck {
             let mut put_model = model.clone();
             // check wrong body id
             put_model.id *= 10;
+            tracing::info!("check wrong id {}", put_model.id);
             put_model.name = format!("changed {}", put_model.name);
             put_model.region = format!("changed {} region", put_model.region);
             put_model.age *= 2;
@@ -130,7 +131,7 @@ impl HTTPOperateCheck {
             let res = self.client.put(&detail_path).json(&put_model).send().await;
             assert_eq!(res.status(), StatusCode::OK);
             put_model.id = model.id;
-            tracing::debug!("----put {}", serde_json::json!(put_model));
+            tracing::info!("put {}", serde_json::json!(put_model));
             self.check_db_model_eq(&put_model).await;
         }
         let resp = self
@@ -141,38 +142,6 @@ impl HTTPOperateCheck {
             .await;
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
-
-    // async fn check_patch(&self) {
-    //     tracing::info!("http patch check");
-    //     for model in BASIC_MODELS.iter() {
-    //         let name = format!("patch {}", model.name);
-    //         let region = format!("patch {}", model.region);
-    //         let age = 9 + model.age;
-    //         let score = model.score + 99.0;
-    //         let patch_body = serde_json::json!({
-    //             "name": name,
-    //             "region": region,
-    //             "age": age,
-    //             "score": score,
-    //         });
-    //         let detail_path = format!("{}/{}", self.path(), model.id);
-    //         let res = self
-    //             .client
-    //             .patch(&detail_path)
-    //             .json(&patch_body)
-    //             .send()
-    //             .await;
-    //         assert_eq!(res.status(), StatusCode::OK);
-    //         let mut patch_model = model.clone();
-    //         patch_model.name = name;
-    //         patch_model.region = region;
-    //         patch_model.age = age;
-    //         patch_model.score = score;
-    //         self.check_db_model_eq(&patch_model).await;
-    //     }
-    //     let resp = self.client.patch(&format!("{}/{}", self.path(), u16::MAX)).json(BASIC_MODELS.iter().next().unwrap()).send().await;
-    //     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-    // }
 
     async fn check_delete(&self) {
         tracing::info!("http delete single check");
@@ -217,6 +186,7 @@ pub async fn check_curd_operate_correct(app: Router, path: &str, db: &'static Da
         path: path.to_owned(),
         db,
     };
+    tracing::warn!("check for curd, this will generate some error level `PrimaryKeyNotFound`, it's for check, please ignore it.");
     c.check_create(true).await;
     c.check_list().await;
     c.check_retrive().await;
