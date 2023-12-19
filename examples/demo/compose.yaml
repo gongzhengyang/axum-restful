@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:15-bullseye
+    image: postgres:16-bookworm
     container_name: demo-postgres
     restart: always
     volumes:

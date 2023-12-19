@@ -1,5 +1,6 @@
 use schemars::JsonSchema;
 use sea_orm_migration::prelude::MigratorTrait;
+use tokio::net::TcpListener;
 
 use axum_restful::swagger::SwaggerGeneratorExt;
 use axum_restful::views::ModelViewExt;
@@ -40,8 +41,6 @@ async fn main() {
     let addr = "0.0.0.0:3000";
     tracing::info!("listen at {addr}");
     tracing::info!("visit http://127.0.0.1:3000/docs/swagger/ for swagger api");
-    axum::Server::bind(&addr.parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap()
+    let listener = TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app.into_make_service()).await.unwrap();
 }

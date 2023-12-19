@@ -2,17 +2,16 @@ use std::sync::Arc;
 
 use aide::{
     axum::{
-        routing::{get, get_with},
         ApiRouter,
+        routing::{get, get_with},
     },
     openapi::OpenApi,
-    redoc::Redoc,
     transform::{TransformOpenApi, TransformOperation},
 };
 use async_trait::async_trait;
 use axum::{
-    response::{IntoResponse, Response},
-    Extension, Json, Router,
+    Extension,
+    Json, response::{IntoResponse, Response}, Router,
 };
 use schemars::{gen, JsonSchema};
 use sea_orm::{ActiveModelBehavior, ActiveModelTrait, EntityTrait, IntoActiveModel};
@@ -50,38 +49,12 @@ where
 
     #[inline]
     fn serve_dir_path() -> &'static str {
-        "statics/"
+        awesome_operates::embed::EXTRACT_DIR_PATH
     }
 
     #[inline]
     fn redoc_openapi_json_url() -> &'static str {
         "/docs/openapi/api.json"
-    }
-
-    /// provide an openapi json for swagger/openapi to use with a ptah /docs/openapi/api.json
-    /// if you want to change the OPENAPI json path, you must change `swagger-initializer.js`
-    /// ```javascript
-    ///   window.ui = SwaggerUIBundle({
-    ///     url: "/docs/openapi/api.json",
-    ///   });
-    /// ```
-    fn openapi_routes() -> ApiRouter {
-        aide::gen::infer_responses(true);
-        let router = ApiRouter::new()
-            .api_route_with(
-                "/",
-                get_with(
-                    Redoc::new(Self::redoc_openapi_json_url())
-                        .with_title("Axum restful")
-                        .axum_handler(),
-                    |op| op.description("This documentation page."),
-                ),
-                |p| p.security_requirement("ApiKey"),
-            )
-            .route("/api.json", get(Self::serve_docs));
-        aide::gen::infer_responses(false);
-
-        router
     }
 
     async fn serve_docs(Extension(api): Extension<Arc<OpenApi>>) -> Response {
@@ -165,7 +138,7 @@ where
             )
     }
 
-    fn http_router_with_swagger(nest_prefix: &'static str, model_api_router: ApiRouter) -> Router
+    async fn http_router_with_swagger(nest_prefix: &'static str, model_api_router: ApiRouter) -> anyhow::Result<Router>
     where
         Self: Send + 'static,
     {
@@ -176,13 +149,18 @@ where
 
         let mut api = OpenApi::default();
 
-        let static_router =
-            ApiRouter::new().route_service("/", ServeDir::new(Self::serve_dir_path()));
-        ApiRouter::new()
+        awesome_operates::extract_all_files!(awesome_operates::embed::Asset);
+        awesome_operates::swagger::InitSwagger::new(
+            awesome_operates::embed::EXTRACT_DIR_PATH,
+            "swagger-init.js",
+            "index.html",
+            "../api.json"
+        ).build().await?;
+        Ok(ApiRouter::new()
             .nest_api_service(nest_prefix, model_api_router)
-            .nest("/docs/swagger/", static_router)
-            .nest_service("/docs/openapi", Self::openapi_routes())
+            .nest_service("/swagger", ServeDir::new(Self::serve_dir_path()))
+            .route("/api.json", get(Self::serve_docs))
             .finish_api_with(&mut api, Self::api_docs_head_config)
-            .layer(Extension(Arc::new(api)))
+            .layer(Extension(Arc::new(api))))
     }
 }
