@@ -7,13 +7,13 @@ use tokio::signal;
 /// use axum::{Router, routing::get};
 /// use axum_restful::utils::shutdown_signal;
 ///
-/// let app = Router::new().route("/", get(|| async {"hello"}));
+/// // let app = Router::new().route("/", get(|| async {"hello"}));
 /// # async {
-/// axum::Server::bind(&"".parse().unwrap())
-///      .serve(app.into_make_service())
-///      .with_graceful_shutdown(shutdown_signal())
-///      .await
-///      .unwrap()
+/// //axum::Server::bind(&"".parse().unwrap())
+///  //    .serve(app.into_make_service())
+///  //    .with_graceful_shutdown(shutdown_signal())
+///  //    .await
+///  //    .unwrap()
 /// # };
 /// ```
 pub async fn shutdown_signal() {

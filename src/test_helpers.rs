@@ -1,14 +1,15 @@
+use std::convert::Infallible;
 /// mainly copy from axum/test_helpers
-use std::net::{SocketAddr, TcpListener};
+use std::net::SocketAddr;
+use std::str::FromStr;
 
-use axum::body::HttpBody;
-use axum_core::BoxError;
+use axum::{extract::Request, response::Response};
 use bytes::Bytes;
 use http::{
     header::{HeaderName, HeaderValue},
-    Request, StatusCode,
+    StatusCode,
 };
-use hyper::{Body, Server};
+use tokio::net::TcpListener;
 use tower::make::Shared;
 use tower_service::Service;
 
@@ -32,21 +33,22 @@ pub struct TestClient {
 }
 
 impl TestClient {
-    pub fn new<S, ResBody>(svc: S) -> Self
+    pub fn new<S>(svc: S) -> Self
     where
-        S: Service<Request<Body>, Response = http::Response<ResBody>> + Clone + Send + 'static,
-        ResBody: HttpBody + Send + 'static,
-        ResBody::Data: Send,
-        ResBody::Error: Into<BoxError>,
+        S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
         S::Future: Send,
-        S::Error: Into<BoxError>,
     {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
+        let std_listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        std_listener.set_nonblocking(true).unwrap();
+        let listener = TcpListener::from_std(std_listener).unwrap();
+
         let addr = listener.local_addr().unwrap();
+        println!("Listening on {addr}");
 
         tokio::spawn(async move {
-            let server = Server::from_tcp(listener).unwrap().serve(Shared::new(svc));
-            server.await.expect("server error");
+            axum::serve(listener, Shared::new(svc))
+                .await
+                .expect("server error")
         });
 
         let client = reqwest::Client::builder()
@@ -128,7 +130,15 @@ impl RequestBuilder {
         HeaderValue: TryFrom<V>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
+        // reqwest still uses http 0.2
+        let key: HeaderName = key.try_into().map_err(Into::into).unwrap();
+        let key = reqwest::header::HeaderName::from_bytes(key.as_ref()).unwrap();
+
+        let value: HeaderValue = value.try_into().map_err(Into::into).unwrap();
+        let value = reqwest::header::HeaderValue::from_bytes(value.as_bytes()).unwrap();
+
         self.builder = self.builder.header(key, value);
+
         self
     }
 
@@ -163,11 +173,18 @@ impl TestResponse {
     }
 
     pub fn status(&self) -> StatusCode {
-        self.response.status()
+        StatusCode::from_u16(self.response.status().as_u16()).unwrap()
     }
 
-    pub fn headers(&self) -> &http::HeaderMap {
-        self.response.headers()
+    pub fn headers(&self) -> http::HeaderMap {
+        // reqwest still uses http 0.2 so have to convert into http 1.0
+        let mut headers = http::HeaderMap::new();
+        for (key, value) in self.response.headers() {
+            let key = http::HeaderName::from_str(key.as_str()).unwrap();
+            let value = http::HeaderValue::from_bytes(value.as_bytes()).unwrap();
+            headers.insert(key, value);
+        }
+        headers
     }
 
     pub async fn chunk(&mut self) -> Option<Bytes> {

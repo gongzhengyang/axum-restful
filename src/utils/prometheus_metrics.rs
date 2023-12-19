@@ -1,10 +1,12 @@
-use std::{future::ready, net::SocketAddr, time::Instant};
+use std::{future::ready, time::Instant};
 
 use async_trait::async_trait;
 use axum::{
-    extract::MatchedPath, http::Request, middleware::Next, response::Response, routing::get, Router,
+    extract::MatchedPath, extract::Request, middleware::Next, response::Response, routing::get,
+    Router,
 };
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
+use tokio::net::TcpListener;
 
 /// based on axum/examples/prometheus-metrics/src/main.rs
 /// ```rust,no_run
@@ -17,9 +19,12 @@ use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 ///     Metrics::start_metrics_server().await;
 /// });
 ///
-/// let app = Router::new().route("/hello", get(|| async {"hello"})).route_layer(middleware::from_fn(track_metrics));
+/// let app = Router::new()
+///     .route("/hello", get(|| async {"hello"}))
+///     .route_layer(middleware::from_fn(track_metrics));
 /// # async {
-/// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap()).serve(app.into_make_service()).await.unwrap()
+///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+///     axum::serve(listener, app).await.unwrap();
 /// # };
 /// ```
 /// and then you can visit http://127.0.0.1:3000/hello to get response from axum server,
@@ -58,22 +63,22 @@ pub trait PrometheusMetrics {
         "/metrics"
     }
 
-    fn get_metrics_addr() -> SocketAddr {
-        "0.0.0.0:3001".parse().unwrap()
+    fn get_metrics_addr() -> String {
+        "0.0.0.0:3001".to_owned()
     }
 
     async fn start_metrics_server() {
         let addr = Self::get_metrics_addr();
         tracing::debug!("listening on {:?}", addr);
-        axum::Server::bind(&addr)
-            .serve(Self::get_prometheus_app().into_make_service())
+        let listener = TcpListener::bind(addr).await.unwrap();
+        axum::serve(listener, Self::get_prometheus_app().into_make_service())
             .await
-            .unwrap()
+            .unwrap();
     }
 }
 
 /// a middle record the request info by added into axum middlewares
-pub async fn track_metrics<B>(req: Request<B>, next: Next<B>) -> Response {
+pub async fn track_metrics(req: Request, next: Next) -> Response {
     let start = Instant::now();
     let path = if let Some(matched_path) = req.extensions().get::<MatchedPath>() {
         matched_path.as_str().to_owned()

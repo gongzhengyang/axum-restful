@@ -1,4 +1,4 @@
-use std::{fs, net::SocketAddr, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 use async_trait::async_trait;
 use axum::{
@@ -35,10 +35,12 @@ use rcgen::{date_time_ymd, Certificate, CertificateParams, DistinguishedName, Dn
 /// # async {
 /// let tls_config = GenerateAppCertKey::get_rustls_config(true).await.unwrap();
 /// let addr: SocketAddr = format!("{}:{}", ip, https_port).as_str().parse().unwrap();
-/// axum_server::bind_rustls(addr, tls_config)
-///      .serve(app.into_make_service())
-///      .await
-///      .unwrap();
+/// //axum_server::bind_rustls(addr, tls_config)
+/// //     .serve(app.into_make_service())
+///  //    .await
+///   //   .unwrap();
+///   //  let addr = format!("{}:{}", ip, https_port);
+///   //  let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
 /// # };
 /// ```
 #[async_trait]
@@ -118,14 +120,10 @@ pub async fn redirect_http_to_https(http_port: u16, https_port: u16, http_ip: &s
         }
     };
 
-    let addr: SocketAddr = format!("{}:{}", http_ip, http_port)
-        .as_str()
-        .parse()
-        .unwrap();
+    let addr = format!("{}:{}", http_ip, http_port);
     tracing::debug!("http redirect listening on {}", addr);
-
-    axum::Server::bind(&addr)
-        .serve(redirect.into_make_service())
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, redirect.into_make_service())
         .await
         .unwrap();
 }

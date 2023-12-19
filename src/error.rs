@@ -36,7 +36,7 @@ impl IntoResponse for AppError {
             AppError::PrimaryKeyNotFound { .. } => StatusCode::NOT_FOUND,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
-        tracing::error!("error happend: {self:?}");
+        tracing::error!("error happened: {self:?}");
         (
             status_code,
             Json(serde_json::json!({

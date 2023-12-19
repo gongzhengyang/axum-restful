@@ -8,8 +8,8 @@ edition = "2021"
 members = [".", "migration"]
 
 [dependencies]
-aide = "0.12"
-axum = "0.6"
+aide = "0.13"
+axum = "0.7"
 axum-restful = { path = "../../" }
 chrono = "0.4"
 migration = { path = "./migration" }

@@ -1,5 +1,9 @@
-mod asset;
+use rust_embed::RustEmbed;
+
+pub use generator::SwaggerGeneratorExt;
+
 mod generator;
 
-pub use asset::StaticFile;
-pub use generator::SwaggerGeneratorExt;
+#[derive(RustEmbed)]
+#[folder = "statics/swagger"]
+struct Asset;

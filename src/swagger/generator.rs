@@ -11,18 +11,15 @@ use aide::{
 };
 use async_trait::async_trait;
 use axum::{
-    handler::HandlerWithoutStateExt,
-    http::Uri,
     response::{IntoResponse, Response},
     Extension, Json, Router,
 };
 use schemars::{gen, JsonSchema};
 use sea_orm::{ActiveModelBehavior, ActiveModelTrait, EntityTrait, IntoActiveModel};
 use serde::Serialize;
+use tower_http::services::ServeDir;
 
 use crate::views::ModelViewExt;
-
-use super::asset::StaticFile;
 
 /// generate swagger docs for service
 /// when the service is up
@@ -52,25 +49,8 @@ where
     }
 
     #[inline]
-    fn index_uri() -> &'static str {
-        "/index.html"
-    }
-
-    async fn static_index_handler() -> Response {
-        Self::static_file_handler(Self::index_uri().parse::<Uri>().unwrap()).await
-    }
-
-    #[inline]
-    fn trim_static_prefix_pattern() -> &'static str {
+    fn serve_dir_path() -> &'static str {
         "statics/"
-    }
-
-    async fn static_file_handler(uri: Uri) -> Response {
-        let mut path = uri.path().trim_start_matches('/').to_string();
-        if path.starts_with(Self::trim_static_prefix_pattern()) {
-            path = path.replace(Self::trim_static_prefix_pattern(), "");
-        }
-        StaticFile(path).into_response()
     }
 
     #[inline]
@@ -121,19 +101,6 @@ where
         op.summary(&Self::http_retrieve_summary())
             .response::<200, Json<<T::Entity as EntityTrait>::Model>>()
     }
-
-    // fn http_partial_update_summary() -> String {
-    //     format!(
-    //         "partial update an instance: {}",
-    //         Self::modle_schema_description()
-    //     )
-    // }
-    //
-    // fn http_partial_update_docs(op: TransformOperation) -> TransformOperation {
-    //     op.summary(&Self::http_partial_update_summary())
-    //         .input::<Json<<T::Entity as EntityTrait>::Model>>()
-    //         .response_with::<200, (), _>(|res| res.description("partial update success"))
-    // }
 
     fn http_update_summary() -> String {
         format!("update an instance {}", Self::modle_schema_description())
@@ -209,9 +176,8 @@ where
 
         let mut api = OpenApi::default();
 
-        let static_router = ApiRouter::new()
-            .route_service("/", Self::static_index_handler.into_service())
-            .route_service("/*file", Self::static_file_handler.into_service());
+        let static_router =
+            ApiRouter::new().route_service("/", ServeDir::new(Self::serve_dir_path()));
         ApiRouter::new()
             .nest_api_service(nest_prefix, model_api_router)
             .nest("/docs/swagger/", static_router)
